@@ -1,0 +1,1867 @@
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>НОЧНАЯ СМЕНА: СЕКТОР-0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;800&display=swap');
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050605;
+            font-family: 'Share Tech Mono', monospace;
+            color: #c8d1c5;
+        }
+
+        #game-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        /* Эффект старого ЭЛТ-монитора и виньетки */
+        .crt-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            background: 
+                radial-gradient(circle at center, transparent 55%, rgba(0, 0, 0, 0.85) 100%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%);
+            background-size: 100% 100%, 100% 4px;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 8px;
+            background: rgba(150, 200, 150, 0.04);
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 11;
+            animation: scanlineMove 7s linear infinite;
+        }
+
+        @keyframes scanlineMove {
+            0% { transform: translateY(-10vh); }
+            100% { transform: translateY(110vh); }
+        }
+
+        .rec-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #b91c1c;
+            display: inline-block;
+            animation: blink 1.2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0.15; }
+        }
+
+        .danger-pulse {
+            animation: dangerFlash 0.6s infinite alternate;
+        }
+
+        @keyframes dangerFlash {
+            from { box-shadow: inset 0 0 30px rgba(153, 27, 27, 0.1); }
+            to { box-shadow: inset 0 0 90px rgba(185, 28, 28, 0.65); }
+        }
+
+        /* Стили кнопок меню в индустриальном аналоговом стиле */
+        .analog-btn {
+            background: linear-gradient(180deg, #1f241f 0%, #121512 100%);
+            border: 1px solid #485448;
+            color: #d4dfd0;
+            transition: all 0.15s ease;
+            text-shadow: 0 0 6px rgba(180, 220, 170, 0.3);
+        }
+
+        .analog-btn:hover:not(:disabled) {
+            background: linear-gradient(180deg, #2d362d 0%, #191f19 100%);
+            border-color: #84a380;
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .analog-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .vr-btn {
+            background: linear-gradient(180deg, #2b3828 0%, #151d14 100%);
+            border: 1px solid #6b8f64;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="game-canvas"></canvas>
+    <div class="crt-overlay"></div>
+    <div class="scanline"></div>
+    <div id="danger-vignette" class="fixed inset-0 pointer-events-none z-10 hidden danger-pulse"></div>
+
+    <!-- Внутриигровой интерфейс (HUD) -->
+    <div id="hud" class="fixed inset-0 pointer-events-none z-20 hidden flex flex-col justify-between p-4 sm:p-6">
+        <!-- Верхняя панель камеры / статуса -->
+        <div class="flex justify-between items-start">
+            <div class="bg-black/70 border border-stone-700/80 px-3 py-2 rounded">
+                <div class="flex items-center gap-2 text-xs sm:text-sm tracking-widest text-stone-300">
+                    <span class="rec-dot"></span>
+                    <span id="hud-location">СЕКТОР 01: ПОСТ ОХРАНЫ</span>
+                </div>
+                <div id="hud-clock" class="text-lg sm:text-xl text-amber-400/90 mt-0.5">00:00 AM</div>
+            </div>
+
+            <!-- Статус угрозы / охоты -->
+            <div id="hunt-banner" class="hidden bg-red-950/85 border border-red-600 px-4 py-2 rounded text-center">
+                <div class="text-red-400 font-bold tracking-widest text-xs sm:text-sm">⚠ ТРЕВОГА: ОБЪЕКТЫ ВЕДУТ ОХОТУ ⚠</div>
+                <div class="text-[11px] text-red-200/80">ПРЯЧЬТЕСЬ ИЛИ РАЗОРВИТЕ ДИСТАНЦИЮ!</div>
+            </div>
+
+            <!-- Прогресс ключ-карт -->
+            <div class="bg-black/70 border border-stone-700/80 px-3 py-2 rounded text-right">
+                <div class="text-xs text-stone-400">АВАРИЙНЫЕ КЛЮЧИ</div>
+                <div id="hud-keys" class="text-lg sm:text-xl text-emerald-400 font-bold">0 / 5</div>
+                <div id="hud-exit-hint" class="text-[11px] text-stone-400 hidden">ВЫХОД ОТКРЫТ В АТРИУМЕ!</div>
+            </div>
+        </div>
+
+        <!-- Центральный прицел и подсказка взаимодействия -->
+        <div class="flex flex-col items-center justify-center my-auto">
+            <div id="crosshair" class="w-1.5 h-1.5 rounded-full bg-stone-300/60"></div>
+            <div id="interact-prompt" class="mt-3 bg-black/80 border border-amber-500/60 text-amber-200 px-3 py-1 rounded text-xs sm:text-sm hidden">
+                [E] ВЗАИМОДЕЙСТВОВАТЬ
+            </div>
+            <div id="system-toast" class="mt-2 bg-stone-900/90 border border-stone-600 text-stone-200 px-4 py-1.5 rounded text-xs sm:text-sm opacity-0 transition-opacity duration-300">
+                Сообщение системы
+            </div>
+        </div>
+
+        <!-- Нижняя панель (Батарея фонаря, выносливость, управление) -->
+        <div class="flex flex-wrap justify-between items-end gap-4">
+            <div class="bg-black/75 border border-stone-700/80 p-3 rounded w-56 sm:w-64">
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-stone-400">ФОНАРЬ [F]</span>
+                    <span id="battery-text" class="text-amber-300">100%</span>
+                </div>
+                <div class="w-full h-2 bg-stone-800 rounded overflow-hidden mb-2.5">
+                    <div id="battery-bar" class="h-full bg-amber-400 transition-all duration-150" style="width: 100%"></div>
+                </div>
+
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-stone-400">ВЫНОСЛИВОСТЬ [SHIFT]</span>
+                    <span id="stamina-text" class="text-emerald-300">100%</span>
+                </div>
+                <div class="w-full h-2 bg-stone-800 rounded overflow-hidden">
+                    <div id="stamina-bar" class="h-full bg-emerald-500 transition-all duration-150" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <!-- Мини-радар / планшет видеонаблюдения [TAB] -->
+            <div id="cctv-panel" class="hidden bg-black/90 border-2 border-stone-600 p-3 rounded w-72 sm:w-80 shadow-2xl">
+                <div class="flex justify-between items-center border-b border-stone-700 pb-1.5 mb-2">
+                    <span class="text-xs text-emerald-400 font-bold tracking-wider">ПЛАНШЕТ ОХРАНЫ // КАМЕРЫ</span>
+                    <span class="text-[10px] text-stone-400">[TAB] ЗАКРЫТЬ</span>
+                </div>
+                <canvas id="minimap-canvas" width="260" height="200" class="w-full h-44 bg-stone-950 border border-stone-800 rounded"></canvas>
+                <div class="mt-2 flex justify-between text-[11px] text-stone-400">
+                    <span><span class="text-emerald-400">●</span> ВЫ</span>
+                    <span><span class="text-amber-400">■</span> КЛЮЧИ</span>
+                    <span><span class="text-red-500">▲</span> ОБЪЕКТЫ</span>
+                </div>
+            </div>
+
+            <div class="bg-black/70 border border-stone-700/80 px-3 py-2 rounded text-[11px] text-stone-400 hidden md:block">
+                <div>[WASD] Движение &nbsp;|&nbsp; [SHIFT] Бег</div>
+                <div>[F] Фонарь &nbsp;|&nbsp; [TAB] Планшет камер &nbsp;|&nbsp; [E] Действие</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Стартовый экран / Меню (Поддержка ПК и Meta Quest 2 WebXR) -->
+    <div id="start-screen" class="fixed inset-0 z-30 flex items-center justify-center bg-black/90 p-4">
+        <div class="max-w-xl w-full bg-stone-950/95 border border-stone-700 p-6 sm:p-8 rounded-lg shadow-2xl">
+            <div class="flex items-center justify-between border-b border-stone-800 pb-3 mb-4">
+                <div class="flex items-center gap-2 text-xs text-red-400 tracking-widest">
+                    <span class="rec-dot"></span>
+                    <span>АРХИВНАЯ ЗАПИСЬ #04-92</span>
+                </div>
+                <span class="text-xs text-stone-500">WEBXR / DESKTOP READY</span>
+            </div>
+
+            <h1 class="text-2xl sm:text-3xl font-bold text-stone-100 tracking-wider mb-2">
+                НОЧНАЯ СМЕНА: СЕКТОР-0
+            </h1>
+            <p class="text-xs sm:text-sm text-stone-400 leading-relaxed mb-5">
+                Вы задремали на ночном дежурстве и очнулись в искажённой, бесконечной версии развлекательного комплекса и пиццерии, раскинувшейся на площади четырёх торговых центров.
+                <br><br>
+                В пустых залах бродят и играют друг с другом в догонялки трое: <span class="text-stone-200">Крыса-Повар</span>, <span class="text-stone-200">Кошмарный Волк</span> и <span class="text-stone-200">Плюшевый Заяц</span>. Если хоть один из них заметит вас — они устроят совместную охоту. Найдите <span class="text-amber-300">5 аварийных ключ-карт</span> и откройте главный шлюз.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                <button id="btn-start-pc" class="analog-btn py-3.5 px-4 rounded font-bold text-sm tracking-wider cursor-pointer">
+                    ▶ ЗАПУСК НА ПК (КЛАВИАТУРА/МЫШЬ)
+                </button>
+                <button id="btn-start-vr" class="analog-btn vr-btn py-3.5 px-4 rounded font-bold text-sm tracking-wider cursor-pointer" disabled>
+                    🥽 ВОЙТИ В VR (META QUEST 2)
+                </button>
+            </div>
+
+            <div id="vr-status-msg" class="text-xs text-stone-500 text-center">
+                Проверка поддержки WebXR гарнитуры Meta Quest 2...
+            </div>
+        </div>
+    </div>
+
+    <!-- Экран поражения / победы -->
+    <div id="end-screen" class="fixed inset-0 z-40 hidden flex items-center justify-center bg-black/95 p-4">
+        <div class="max-w-md w-full bg-stone-950 border border-stone-700 p-6 sm:p-8 rounded-lg text-center">
+            <div id="end-badge" class="inline-block px-3 py-1 rounded text-xs tracking-widest mb-3 bg-red-950 text-red-400 border border-red-800">
+                СВЯЗЬ С ОХРАННИКОМ ПРЕРВАНА
+            </div>
+            <h2 id="end-title" class="text-2xl sm:text-3xl font-bold text-stone-100 mb-3">
+                ВЫ ПОЙМАНЫ
+            </h2>
+            <p id="end-desc" class="text-sm text-stone-400 mb-6">
+                Они нашли вас в темноте бесконечных коридоров...
+            </p>
+            <button id="btn-restart" class="analog-btn w-full py-3 px-4 rounded font-bold text-sm tracking-wider cursor-pointer">
+                ↻ НАЧАТЬ СМЕНУ ЗАНОВО
+            </button>
+        </div>
+    </div>
+
+    <script>
+    /**
+     * НОЧНАЯ СМЕНА: СЕКТОР-0
+     * Самодостаточный 3D-хоррор на выживание с поддержкой Meta Quest 2 (WebXR) и ПК.
+     * Вся геометрия, текстуры и звуки генерируются процедурно.
+     */
+
+    // =========================================================================
+    // 1. ПРОЦЕДУРНЫЙ ЗВУКОВОЙ ДВИЖОК (WEB AUDIO API)
+    // =========================================================================
+    class SoundEngine {
+        constructor() {
+            this.ctx = null;
+            this.masterGain = null;
+            this.ambientOsc = null;
+            this.lastStepTime = 0;
+            this.lastHeartbeatTime = 0;
+            this.lastPlayfulSoundTime = 0;
+        }
+
+        init() {
+            if (this.ctx) return;
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.value = 0.45;
+            this.masterGain.connect(this.ctx.destination);
+            this.startAmbientHum();
+        }
+
+        startAmbientHum() {
+            if (!this.ctx) return;
+            // Низкий индустриальный гул вентиляции и люминесцентных ламп
+            const osc1 = this.ctx.createOscillator();
+            const osc2 = this.ctx.createOscillator();
+            const filter = this.ctx.createBiquadFilter();
+            const gain = this.ctx.createGain();
+
+            osc1.type = 'sawtooth';
+            osc1.frequency.value = 54;
+            osc2.type = 'sine';
+            osc2.frequency.value = 108;
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 140;
+            gain.gain.value = 0.14;
+
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGain);
+
+            osc1.start();
+            osc2.start();
+            this.ambientOsc = osc1;
+        }
+
+        playFootstep(isSprint = false, isHeavyAnimatronic = false, distance = 0) {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const interval = isHeavyAnimatronic ? 0.48 : (isSprint ? 0.32 : 0.52);
+            if (!isHeavyAnimatronic && now - this.lastStepTime < interval) return;
+            if (!isHeavyAnimatronic) this.lastStepTime = now;
+
+            const volume = isHeavyAnimatronic ? Math.max(0, 1 - distance / 34) * 0.45 : (isSprint ? 0.25 : 0.14);
+            if (volume <= 0.01) return;
+
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = isHeavyAnimatronic ? 'triangle' : 'sine';
+            const baseFreq = isHeavyAnimatronic ? 58 : 95;
+            osc.frequency.setValueAtTime(baseFreq + Math.random() * 18, now);
+            osc.frequency.exponentialRampToValueAtTime(28, now + 0.12);
+
+            gain.gain.setValueAtTime(volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        }
+
+        playHeartbeat(intensity = 0.5) {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const beatInterval = Math.max(0.32, 0.85 - intensity * 0.5);
+            if (now - this.lastHeartbeatTime < beatInterval) return;
+            this.lastHeartbeatTime = now;
+
+            [0, 0.14].forEach((offset, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(idx === 0 ? 65 : 52, now + offset);
+                osc.frequency.exponentialRampToValueAtTime(30, now + offset + 0.11);
+
+                gain.gain.setValueAtTime(0.28 * intensity, now + offset);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now + offset);
+                osc.stop(now + offset + 0.13);
+            });
+        }
+
+        playClick(pitch = 600) {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(pitch, now);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(now);
+            osc.stop(now + 0.06);
+        }
+
+        playKeycardPickup() {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            [523.25, 659.25, 783.99].forEach((freq, i) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + i * 0.08);
+                gain.gain.setValueAtTime(0.2, now + i * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now + i * 0.08);
+                osc.stop(now + i * 0.08 + 0.26);
+            });
+        }
+
+        // Звук, когда аниматроники «играют» друг с другом вдалеке
+        playAnimatronicChatter(distance) {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            if (now - this.lastPlayfulSoundTime < 4.5) return;
+            const vol = Math.max(0, 1 - distance / 42) * 0.18;
+            if (vol <= 0.01) return;
+            this.lastPlayfulSoundTime = now;
+
+            const notes = [220, 293, 246, 196];
+            notes.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq + (Math.random() - 0.5) * 20, now + idx * 0.14);
+                gain.gain.setValueAtTime(vol, now + idx * 0.14);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.18);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now + idx * 0.14);
+                osc.stop(now + idx * 0.14 + 0.2);
+            });
+        }
+
+        // Пронзительный механический визг тревоги при обнаружении игрока
+        playAlertScreech() {
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc1 = this.ctx.createOscillator();
+            const osc2 = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc1.type = 'sawtooth';
+            osc2.type = 'square';
+            osc1.frequency.setValueAtTime(420, now);
+            osc1.frequency.linearRampToValueAtTime(980, now + 0.25);
+            osc1.frequency.exponentialRampToValueAtTime(190, now + 1.1);
+
+            osc2.frequency.setValueAtTime(435, now);
+            osc2.frequency.linearRampToValueAtTime(1020, now + 0.25);
+            osc2.frequency.exponentialRampToValueAtTime(160, now + 1.1);
+
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.15);
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(this.masterGain);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 1.2);
+            osc2.stop(now + 1.2);
+        }
+    }
+
+    const sound = new SoundEngine();
+
+    // =========================================================================
+    // 2. ПРОЦЕДУРНЫЕ АНАЛОГОВЫЕ ТЕКСТУРЫ (БЕЗ ВНЕШНИХ КАРТИНОК)
+    // =========================================================================
+    function createCheckeredTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        const size = 64;
+        for (let y = 0; y < 4; y++) {
+            for (let x = 0; x < 4; x++) {
+                const isDark = (x + y) % 2 === 0;
+                ctx.fillStyle = isDark ? '#141615' : '#8b8f88';
+                ctx.fillRect(x * size, y * size, size, size);
+                // Потёртости и грязь
+                ctx.fillStyle = 'rgba(0,0,0,0.28)';
+                ctx.fillRect(x * size + Math.random() * 20, y * size + Math.random() * 20, 24, 18);
+            }
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        return tex;
+    }
+
+    function createConcreteWallTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#252926';
+        ctx.fillRect(0, 0, 256, 256);
+
+        // Зернистость и потёки сырости
+        for (let i = 0; i < 1800; i++) {
+            const v = 25 + Math.floor(Math.random() * 25);
+            ctx.fillStyle = `rgb(${v},${v + 2},${v})`;
+            ctx.fillRect(Math.random() * 256, Math.random() * 256, 3, 3);
+        }
+        // Тёмная полоса плинтуса
+        ctx.fillStyle = '#141715';
+        ctx.fillRect(0, 210, 256, 46);
+        ctx.fillStyle = '#3a3f3a';
+        ctx.fillRect(0, 206, 256, 4);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        return tex;
+    }
+
+    function createCRTMonitorTexture(label, accentColor = '#4ade80') {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 192;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#071109';
+        ctx.fillRect(0, 0, 256, 192);
+
+        // Сетка и линии помех
+        ctx.strokeStyle = 'rgba(100, 180, 110, 0.15)';
+        for (let y = 0; y < 192; y += 6) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(256, y);
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = accentColor;
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText(label, 16, 34);
+        ctx.font = '13px monospace';
+        ctx.fillText('СИГНАЛ: СТАБИЛЬНЫЙ', 16, 62);
+        ctx.fillText('СЕКТОР: ОТКЛЮЧЕН', 16, 84);
+        ctx.strokeStyle = accentColor;
+        ctx.strokeRect(16, 102, 224, 68);
+        ctx.fillText('NO SIGNAL // REC', 28, 140);
+
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    // =========================================================================
+    // 3. ГЕНЕРАЦИЯ ГИГАНТСКОГО ИСКАЖЁННОГО КОМПЛЕКСА (КАРТА)
+    // =========================================================================
+    const CELL_SIZE = 6; // Размер одной ячейки сетки в метрах (огромный масштаб)
+    const MAP_W = 29;
+    const MAP_H = 29;
+
+    // Типы ячеек:
+    // 1 = Стена
+    // 0 = Коридор / Атриум
+    // 2 = Комната охраны (старт)
+    // 3 = Главный зал пиццерии (шахматный пол, столы, сцена)
+    // 4 = Коридор со шкафчиками (можно прятаться в нишах)
+    // 5 = Главный выходной шлюз
+    const worldGrid = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(1));
+    const roomZones = [];
+
+    function carveRect(x1, y1, x2, y2, type) {
+        for (let y = Math.max(1, y1); y <= Math.min(MAP_H - 2, y2); y++) {
+            for (let x = Math.max(1, x1); x <= Math.min(MAP_W - 2, x2); x++) {
+                worldGrid[y][x] = type;
+            }
+        }
+    }
+
+    function buildComplexLayout() {
+        // 1. Стартовая Комната Охраны в центре-юге (x: 13..15, y: 23..26)
+        carveRect(13, 23, 15, 26, 2);
+        roomZones.push({ name: 'СЕКТОР 01: ПОСТ ОХРАНЫ', x1: 13, y1: 23, x2: 15, y2: 26 });
+
+        // Центральный коридор на север
+        carveRect(14, 18, 14, 22, 0);
+
+        // 2. Огромный Главный Зал Пиццерии и Сцена (x: 9..19, y: 11..17)
+        carveRect(9, 11, 19, 17, 3);
+        roomZones.push({ name: 'СЕКТОР 02: ГЛАВНЫЙ ЗАЛ ПИЦЦЕРИИ', x1: 9, y1: 11, x2: 19, y2: 17 });
+
+        // 3. Западное крыло: Длинные коридоры со шкафчиками (как на скриншотах)
+        carveRect(3, 14, 8, 14, 4);
+        carveRect(3, 6, 3, 24, 4);
+        carveRect(3, 24, 12, 24, 4);
+        carveRect(5, 8, 7, 11, 4);
+        carveRect(3, 10, 5, 10, 4);
+        roomZones.push({ name: 'СЕКТОР 03: ЗАПАДНЫЕ ШКАФЧИКИ', x1: 2, y1: 6, x2: 8, y2: 25 });
+
+        // 4. Восточное крыло: Искажённый торговый атриум и подсобки
+        carveRect(20, 14, 25, 14, 0);
+        carveRect(21, 6, 26, 12, 0);
+        carveRect(25, 13, 25, 25, 0);
+        carveRect(16, 25, 25, 25, 0);
+        carveRect(20, 19, 23, 22, 3);
+        roomZones.push({ name: 'СЕКТОР 04: ВОСТОЧНЫЙ АТРИУМ', x1: 20, y1: 6, x2: 26, y2: 25 });
+
+        // 5. Северный Сектор: Глубокий лабиринт и Главный Выходной Шлюз
+        carveRect(14, 5, 14, 10, 0);
+        carveRect(6, 3, 22, 5, 0);
+        carveRect(12, 1, 16, 3, 5); // Выходной шлюз на самом севере
+        roomZones.push({ name: 'СЕКТОР 05: СЕВЕРНЫЙ ШЛЮЗ ВЫХОДА', x1: 6, y1: 1, x2: 22, y2: 5 });
+
+        // Дополнительные связующие проходы для тактического обхода монстров
+        carveRect(7, 5, 7, 7, 0);
+        carveRect(21, 5, 21, 6, 0);
+        carveRect(9, 19, 13, 19, 0);
+        carveRect(15, 20, 19, 20, 0);
+    }
+
+    buildComplexLayout();
+
+    function gridToWorld(gx, gz) {
+        return new THREE.Vector3(
+            (gx - MAP_W / 2 + 0.5) * CELL_SIZE,
+            0,
+            (gz - MAP_H / 2 + 0.5) * CELL_SIZE
+        );
+    }
+
+    function worldToGrid(wx, wz) {
+        return {
+            gx: Math.floor(wx / CELL_SIZE + MAP_W / 2),
+            gz: Math.floor(wz / CELL_SIZE + MAP_H / 2)
+        };
+    }
+
+    function isWalkable(wx, wz, radius = 0.65) {
+        const offsets = [
+            [0, 0], [radius, 0], [-radius, 0], [0, radius], [0, -radius],
+            [radius * 0.7, radius * 0.7], [-radius * 0.7, radius * 0.7],
+            [radius * 0.7, -radius * 0.7], [-radius * 0.7, -radius * 0.7]
+        ];
+        for (const [ox, oz] of offsets) {
+            const { gx, gz } = worldToGrid(wx + ox, wz + oz);
+            if (gx < 0 || gx >= MAP_W || gz < 0 || gz >= MAP_H) return false;
+            if (worldGrid[gz][gx] === 1) return false;
+            if (worldGrid[gz][gx] === 5 && !gameState.exitUnlocked && gz <= 1) return false;
+        }
+        return true;
+    }
+
+    // =========================================================================
+    // 4. ИНИЦИАЛИЗАЦИЯ THREE.JS И WEBXR (META QUEST 2)
+    // =========================================================================
+    const canvas = document.getElementById('game-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = false; // Оптимизация для стабильных 72/90 FPS на Quest 2
+    renderer.xr.enabled = true;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x040504);
+    scene.fog = new THREE.FogExp2(0x050705, 0.042);
+
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 85);
+
+    // Контейнер игрока (используется и для ПК, и для перемещения рига в VR)
+    const playerRig = new THREE.Group();
+    const startPos = gridToWorld(14, 25);
+    playerRig.position.set(startPos.x, 0, startPos.z);
+    camera.position.set(0, 1.65, 0);
+    playerRig.add(camera);
+    scene.add(playerRig);
+
+    // Фонарик игрока (крепится к камере на ПК или к правому контроллеру в VR)
+    const flashlight = new THREE.SpotLight(0xfff1d6, 2.6, 28, Math.PI / 5.2, 0.45, 1.3);
+    const flashlightTarget = new THREE.Object3D();
+    flashlightTarget.position.set(0, 0, -5);
+    camera.add(flashlight);
+    camera.add(flashlightTarget);
+    flashlight.target = flashlightTarget;
+
+    // Тусклый базовый свет вокруг игрока, чтобы не теряться в полной темноте
+    const personalAmbient = new THREE.PointLight(0x3a473b, 0.42, 7.5);
+    camera.add(personalAmbient);
+
+    // VR-контроллеры для Meta Quest 2
+    const vrControllerRight = renderer.xr.getController(0);
+    const vrControllerLeft = renderer.xr.getController(1);
+    playerRig.add(vrControllerRight);
+    playerRig.add(vrControllerLeft);
+
+    // Визуальная модель фонарика в руке для VR
+    const vrFlashlightMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.032, 0.18, 12),
+        new THREE.MeshStandardMaterial({ color: 0x1f2421, metalness: 0.7, roughness: 0.3 })
+    );
+    vrFlashlightMesh.rotation.x = Math.PI / 2;
+    vrControllerRight.add(vrFlashlightMesh);
+
+    vrControllerRight.addEventListener('selectstart', () => {
+        toggleFlashlight();
+    });
+
+    // =========================================================================
+    // 5. ПОСТРОЕНИЕ 3D-ОКРУЖЕНИЯ (КОМНАТА ОХРАНЫ, ПИЦЦЕРИЯ, ШКАФЧИКИ, АТРИУМ)
+    // =========================================================================
+    const checkeredTex = createCheckeredTexture();
+    checkeredTex.repeat.set(3, 3);
+    const wallTex = createConcreteWallTexture();
+    wallTex.repeat.set(2, 1);
+
+    const matWall = new THREE.MeshLambertMaterial({ map: wallTex, color: 0x8d948c });
+    const matFloorConcrete = new THREE.MeshLambertMaterial({ color: 0x1d201e });
+    const matFloorChecker = new THREE.MeshLambertMaterial({ map: checkeredTex });
+    const matCeiling = new THREE.MeshLambertMaterial({ color: 0x111312 });
+    const matLocker = new THREE.MeshLambertMaterial({ color: 0x3b4240 });
+    const matWood = new THREE.MeshLambertMaterial({ color: 0x3d2b1f });
+    const matMetal = new THREE.MeshLambertMaterial({ color: 0x2c302e });
+
+    const wallHeight = 4.4;
+    const wallGeo = new THREE.BoxGeometry(CELL_SIZE, wallHeight, CELL_SIZE);
+    const floorGeo = new THREE.PlaneGeometry(CELL_SIZE, CELL_SIZE);
+
+    const flickeringLights = [];
+    let deskFanBlades = null;
+    let exitShutterMesh = null;
+
+    function buildWorldGeometry() {
+        const levelGroup = new THREE.Group();
+
+        for (let gz = 0; gz < MAP_H; gz++) {
+            for (let gx = 0; gx < MAP_W; gx++) {
+                const cell = worldGrid[gz][gx];
+                const pos = gridToWorld(gx, gz);
+
+                if (cell === 1) {
+                    const wall = new THREE.Mesh(wallGeo, matWall);
+                    wall.position.set(pos.x, wallHeight / 2, pos.z);
+                    levelGroup.add(wall);
+                } else {
+                    // Пол
+                    const floorMat = (cell === 3 || cell === 2) ? matFloorChecker : matFloorConcrete;
+                    const floor = new THREE.Mesh(floorGeo, floorMat);
+                    floor.rotation.x = -Math.PI / 2;
+                    floor.position.set(pos.x, 0, pos.z);
+                    levelGroup.add(floor);
+
+                    // Потолок
+                    const ceil = new THREE.Mesh(floorGeo, matCeiling);
+                    ceil.rotation.x = Math.PI / 2;
+                    ceil.position.set(pos.x, wallHeight, pos.z);
+                    levelGroup.add(ceil);
+
+                    // Потолочные люминесцентные панели в ключевых точках
+                    if ((gx + gz) % 4 === 0) {
+                        const panel = new THREE.Mesh(
+                            new THREE.BoxGeometry(1.4, 0.08, 0.5),
+                            new THREE.MeshBasicMaterial({ color: cell === 2 ? 0x99d6a3 : 0xbec7ba })
+                        );
+                        panel.position.set(pos.x, wallHeight - 0.05, pos.z);
+                        levelGroup.add(panel);
+
+                        // Несколько реальных источников света для атмосферных теней и бликов
+                        if ((gx * 3 + gz) % 9 === 0 || cell === 2) {
+                            const light = new THREE.PointLight(cell === 2 ? 0x74b882 : 0x9aa698, 0.75, 13);
+                            light.position.set(pos.x, wallHeight - 0.4, pos.z);
+                            levelGroup.add(light);
+                            if (Math.random() < 0.45) {
+                                flickeringLights.push(light);
+                            }
+                        }
+                    }
+
+                    // Декор: Металлические шкафчики вдоль стен в коридорах (тип 4)
+                    if (cell === 4) {
+                        if (worldGrid[gz][gx - 1] === 1) {
+                            addLockerRow(levelGroup, pos.x - CELL_SIZE / 2 + 0.45, pos.z, Math.PI / 2);
+                        }
+                        if (worldGrid[gz][gx + 1] === 1) {
+                            addLockerRow(levelGroup, pos.x + CELL_SIZE / 2 - 0.45, pos.z, -Math.PI / 2);
+                        }
+                    }
+
+                    // Декор: Столы пиццерии в Главном Зале (тип 3)
+                    if (cell === 3 && gx % 2 === 1 && gz % 2 === 1 && !(gx >= 13 && gx <= 15 && gz === 11)) {
+                        addPizzeriaTable(levelGroup, pos.x, pos.z);
+                    }
+
+                    // Колонны в огромном Восточном Атриуме
+                    if (gx === 23 && (gz === 8 || gz === 11)) {
+                        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, wallHeight, 12), matWall);
+                        col.position.set(pos.x, wallHeight / 2, pos.z);
+                        levelGroup.add(col);
+                    }
+                }
+            }
+        }
+
+        // Детализация Комнаты Охраны (как на скриншотах 1, 2 и 7)
+        buildSecurityOfficeProps(levelGroup);
+
+        // Сцена в Главном Зале Пиццерии
+        buildPizzeriaStage(levelGroup);
+
+        // Главный Выходной Шлюз на севере
+        buildExitGate(levelGroup);
+
+        scene.add(levelGroup);
+    }
+
+    function addLockerRow(parent, x, z, rotY) {
+        const group = new THREE.Group();
+        group.position.set(x, 0, z);
+        group.rotation.y = rotY;
+        for (let i = -2; i <= 2; i++) {
+            const locker = new THREE.Mesh(new THREE.BoxGeometry(0.95, 2.25, 0.7), matLocker);
+            locker.position.set(i * 1.02, 1.125, 0);
+            group.add(locker);
+        }
+        parent.add(group);
+    }
+
+    function addPizzeriaTable(parent, x, z) {
+        const group = new THREE.Group();
+        group.position.set(x, 0, z);
+        const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 1.1), matWood);
+        top.position.y = 0.82;
+        group.add(top);
+
+        const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.82, 0.9), matMetal);
+        leg1.position.set(-0.85, 0.41, 0);
+        const leg2 = leg1.clone();
+        leg2.position.set(0.85, 0.41, 0);
+        group.add(leg1, leg2);
+
+        // Праздничный колпак на столе
+        const hat = new THREE.Mesh(
+            new THREE.ConeGeometry(0.14, 0.32, 8),
+            new THREE.MeshLambertMaterial({ color: 0x8f2424 })
+        );
+        hat.position.set(0.3, 1.04, 0.1);
+        group.add(hat);
+
+        parent.add(group);
+    }
+
+    function buildSecurityOfficeProps(parent) {
+        const center = gridToWorld(14, 24);
+        const office = new THREE.Group();
+        office.position.set(center.x, 0, center.z - 1.2);
+
+        // Металлический стол охраны
+        const desk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.85, 1.2), matMetal);
+        desk.position.set(0, 0.425, 0);
+        office.add(desk);
+
+        // 4 ЭЛТ-монитора на столе и стойке (как на фото 1 и 2)
+        const crtMat1 = new THREE.MeshBasicMaterial({ map: createCRTMonitorTexture('CAM-01 // ЗАЛ', '#4ade80') });
+        const crtMat2 = new THREE.MeshBasicMaterial({ map: createCRTMonitorTexture('CAM-04 // КОРИДОР', '#fbbf24') });
+
+        const monPositions = [
+            [-0.85, 1.18, 0, 0.25, crtMat1],
+            [0.0, 1.22, -0.1, 0, crtMat2],
+            [0.85, 1.18, 0, -0.25, crtMat1],
+            [0.85, 1.78, 0, -0.25, crtMat2]
+        ];
+
+        monPositions.forEach(([mx, my, mz, ry, screenMat]) => {
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.54, 0.56), new THREE.MeshLambertMaterial({ color: 0x454238 }));
+            body.position.set(mx, my, mz);
+            body.rotation.y = ry;
+            const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.4), screenMat);
+            screen.position.set(0, 0, 0.285);
+            body.add(screen);
+            office.add(body);
+        });
+
+        // Настольный вентилятор
+        const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.35, 10), matMetal);
+        fanBase.position.set(-1.35, 1.02, 0.2);
+        office.add(fanBase);
+
+        deskFanBlades = new THREE.Mesh(
+            new THREE.BoxGeometry(0.36, 0.05, 0.02),
+            new THREE.MeshLambertMaterial({ color: 0x808782 })
+        );
+        deskFanBlades.position.set(-1.35, 1.18, 0.34);
+        office.add(deskFanBlades);
+
+        parent.add(office);
+    }
+
+    function buildPizzeriaStage(parent) {
+        const stagePos = gridToWorld(14, 11);
+        const stage = new THREE.Group();
+        stage.position.set(stagePos.x, 0, stagePos.z - 1.2);
+
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(10, 0.55, 3.2),
+            new THREE.MeshLambertMaterial({ color: 0x2c1d18 })
+        );
+        platform.position.y = 0.275;
+        stage.add(platform);
+
+        // Красные занавесы по краям сцены
+        const curtainMat = new THREE.MeshLambertMaterial({ color: 0x5c1414 });
+        const leftCurtain = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.8, 0.6), curtainMat);
+        leftCurtain.position.set(-4.3, 2.1, 1.2);
+        const rightCurtain = leftCurtain.clone();
+        rightCurtain.position.set(4.3, 2.1, 1.2);
+        stage.add(leftCurtain, rightCurtain);
+
+        parent.add(stage);
+    }
+
+    function buildExitGate(parent) {
+        const exitPos = gridToWorld(14, 1);
+        const gateGroup = new THREE.Group();
+        gateGroup.position.set(exitPos.x, 0, exitPos.z - 1.5);
+
+        exitShutterMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(4.6, 3.6, 0.35),
+            new THREE.MeshLambertMaterial({ color: 0x3b2320 })
+        );
+        exitShutterMesh.position.y = 1.8;
+        gateGroup.add(exitShutterMesh);
+
+        const signScreen = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.6, 0.65),
+            new THREE.MeshBasicMaterial({ map: createCRTMonitorTexture('ВЫХОД: НУЖНО 5 КЛЮЧЕЙ', '#ef4444') })
+        );
+        signScreen.position.set(0, 3.85, 0.2);
+        gateGroup.add(signScreen);
+
+        parent.add(gateGroup);
+    }
+
+    buildWorldGeometry();
+
+    // =========================================================================
+    // 6. СОЗДАНИЕ ТРЁХ АНИМАТРОНИКОВ (КРЫСА-ПОВАР, КОШМАРНЫЙ ВОЛК, ПЛЮШЕВЫЙ ЗАЯЦ)
+    // =========================================================================
+    function createChefRatModel() {
+        const root = new THREE.Group();
+
+        const greyFur = new THREE.MeshLambertMaterial({ color: 0x54585c });
+        const beigeSnout = new THREE.MeshLambertMaterial({ color: 0xc9b393 });
+        const redCloth = new THREE.MeshLambertMaterial({ color: 0x991b1b });
+        const darkEye = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        const pupilGlow = new THREE.MeshBasicMaterial({ color: 0xffe4b5 });
+
+        // Туловище (высокое, слегка сутулое)
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 1.35, 12), greyFur);
+        torso.position.y = 1.35;
+        root.add(torso);
+
+        // Красный фартук повара
+        const apron = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.05, 0.14), redCloth);
+        apron.position.set(0, 1.25, 0.38);
+        root.add(apron);
+
+        // Лапы и ноги
+        const limbGeo = new THREE.CylinderGeometry(0.11, 0.1, 0.85, 8);
+        const legL = new THREE.Mesh(limbGeo, greyFur);
+        legL.position.set(-0.22, 0.42, 0);
+        const legR = legL.clone();
+        legR.position.set(0.22, 0.42, 0);
+        root.add(legL, legR);
+
+        const armL = new THREE.Mesh(limbGeo, greyFur);
+        armL.position.set(-0.52, 1.45, 0.1);
+        armL.rotation.z = 0.18;
+        const armR = new THREE.Mesh(limbGeo, greyFur);
+        armR.position.set(0.52, 1.45, 0.1);
+        armR.rotation.z = -0.18;
+        root.add(armL, armR);
+
+        // Длинный сегментированный хвост крысы
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.09, 1.35, 8), beigeSnout);
+        tail.position.set(0, 0.65, -0.55);
+        tail.rotation.x = -0.65;
+        root.add(tail);
+
+        // Голова с бежевой мордой, большими круглыми ушами и красным головным убором
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 2.25, 0.05);
+
+        const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 14), greyFur);
+        headGroup.add(cranium);
+
+        // Бежевая вытянутая мордочка
+        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.55, 12), beigeSnout);
+        snout.rotation.x = Math.PI / 2;
+        snout.position.set(0, -0.05, 0.36);
+        headGroup.add(snout);
+
+        // Чёрный нос на кончике морды
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), darkEye);
+        nose.position.set(0, -0.04, 0.63);
+        headGroup.add(nose);
+
+        // Большие круглые уши крысы
+        const earGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.06, 16);
+        const earL = new THREE.Mesh(earGeo, greyFur);
+        earL.rotation.x = Math.PI / 2;
+        earL.position.set(-0.34, 0.28, -0.05);
+        const earR = earL.clone();
+        earR.position.set(0.34, 0.28, -0.05);
+        headGroup.add(earL, earR);
+
+        // Красный головной убор (поварской колпак / кепи)
+        const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.14, 14), redCloth);
+        hatBrim.position.set(0, 0.34, 0.02);
+        const hatTop = new THREE.Mesh(new THREE.SphereGeometry(0.33, 12, 12), redCloth);
+        hatTop.position.set(0, 0.48, 0.02);
+        headGroup.add(hatBrim, hatTop);
+
+        // Глаза
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), pupilGlow);
+        eyeL.position.set(-0.14, 0.08, 0.3);
+        const eyeR = eyeL.clone();
+        eyeR.position.set(0.14, 0.08, 0.3);
+        headGroup.add(eyeL, eyeR);
+
+        root.add(headGroup);
+        root.userData.head = headGroup;
+        return root;
+    }
+
+    function createTwistedWolfModel() {
+        const root = new THREE.Group();
+
+        const darkFur = new THREE.MeshLambertMaterial({ color: 0x1e2024 });
+        const endoMetal = new THREE.MeshLambertMaterial({ color: 0x6b7280 });
+        const toothMat = new THREE.MeshBasicMaterial({ color: 0xd6d3d1 });
+        const amberEye = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+
+        // Массивный сгорбленный корпус волка
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.25, 0.65), darkFur);
+        torso.position.set(0, 1.35, 0.08);
+        torso.rotation.x = 0.24;
+        root.add(torso);
+
+        // Обнажённые металлические рёбра эндоскелета на груди
+        for (let i = 0; i < 3; i++) {
+            const rib = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.08, 0.7), endoMetal);
+            rib.position.set(0, 1.15 + i * 0.22, 0.1);
+            root.add(rib);
+        }
+
+        // Мощные лапы и когти
+        const legGeo = new THREE.BoxGeometry(0.24, 0.9, 0.26);
+        const legL = new THREE.Mesh(legGeo, darkFur);
+        legL.position.set(-0.28, 0.45, 0);
+        const legR = legL.clone();
+        legR.position.set(0.28, 0.45, 0);
+        root.add(legL, legR);
+
+        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.05, 0.22), darkFur);
+        armL.position.set(-0.62, 1.35, 0.22);
+        armL.rotation.x = -0.35;
+        const armR = armL.clone();
+        armR.position.set(0.62, 1.35, 0.22);
+        root.add(armL, armR);
+
+        // Кошмарная волчья голова с разинутой пастью и острыми зубами
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 2.15, 0.28);
+
+        const skull = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.56, 0.65), darkFur);
+        headGroup.add(skull);
+
+        const upperJaw = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.2, 0.52), darkFur);
+        upperJaw.position.set(0, 0.02, 0.48);
+        headGroup.add(upperJaw);
+
+        const lowerJaw = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.48), endoMetal);
+        lowerJaw.position.set(0, -0.2, 0.45);
+        lowerJaw.rotation.x = 0.28;
+        headGroup.add(lowerJaw);
+
+        // Острые зубы
+        for (let t = -2; t <= 2; t++) {
+            const fang = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 5), toothMat);
+            fang.rotation.x = Math.PI;
+            fang.position.set(t * 0.08, -0.09, 0.68);
+            headGroup.add(fang);
+        }
+
+        // Острые волчьи уши
+        const earGeo = new THREE.ConeGeometry(0.14, 0.42, 6);
+        const earL = new THREE.Mesh(earGeo, darkFur);
+        earL.position.set(-0.22, 0.44, -0.05);
+        const earR = earL.clone();
+        earR.position.set(0.22, 0.44, -0.05);
+        headGroup.add(earL, earR);
+
+        // Тускло светящиеся янтарные глаза
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), amberEye);
+        eyeL.position.set(-0.16, 0.1, 0.33);
+        const eyeR = eyeL.clone();
+        eyeR.position.set(0.16, 0.1, 0.33);
+        headGroup.add(eyeL, eyeR);
+
+        root.add(headGroup);
+        root.userData.head = headGroup;
+        return root;
+    }
+
+    function createPlushHareModel() {
+        const root = new THREE.Group();
+
+        const plushSuit = new THREE.MeshLambertMaterial({ color: 0x736d45 });
+        const vestMat = new THREE.MeshLambertMaterial({ color: 0x3b2447 });
+        const stitchEye = new THREE.MeshBasicMaterial({ color: 0xa855f7 });
+
+        // Плюшевый костюм зайца со швами
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 1.3, 12), plushSuit);
+        torso.position.y = 1.3;
+        root.add(torso);
+
+        // Фиолетовая жилетка
+        const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.4, 0.85, 12), vestMat);
+        vest.position.y = 1.42;
+        root.add(vest);
+
+        const limbGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.85, 10);
+        const legL = new THREE.Mesh(limbGeo, plushSuit);
+        legL.position.set(-0.2, 0.42, 0);
+        const legR = legL.clone();
+        legR.position.set(0.2, 0.42, 0);
+        root.add(legL, legR);
+
+        const armL = new THREE.Mesh(limbGeo, plushSuit);
+        armL.position.set(-0.48, 1.42, 0);
+        armL.rotation.z = 0.25;
+        const armR = armL.clone();
+        armR.position.set(0.48, 1.42, 0);
+        armR.rotation.z = -0.25;
+        root.add(armL, armR);
+
+        // Голова с жуткой зашитой улыбкой и длинными надломленными ушами
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 2.22, 0);
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 14), plushSuit);
+        headGroup.add(head);
+
+        // Длинные заячьи уши (одно надломлено вбок)
+        const earL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.72, 0.08), plushSuit);
+        earL.position.set(-0.16, 0.62, 0);
+        headGroup.add(earL);
+
+        const earRBase = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.42, 0.08), plushSuit);
+        earRBase.position.set(0.16, 0.48, 0);
+        const earRTip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.38, 0.08), plushSuit);
+        earRTip.position.set(0.26, 0.72, 0.12);
+        earRTip.rotation.z = -0.65;
+        earRTip.rotation.x = 0.4;
+        headGroup.add(earRBase, earRTip);
+
+        // Пуговичные светящиеся глаза
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), stitchEye);
+        eyeL.position.set(-0.14, 0.08, 0.34);
+        const eyeR = eyeL.clone();
+        eyeR.position.set(0.14, 0.08, 0.34);
+        headGroup.add(eyeL, eyeR);
+
+        root.add(headGroup);
+        root.userData.head = headGroup;
+        return root;
+    }
+
+    // =========================================================================
+    // 7. ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ: ИГРА ДРУГ С ДРУГОМ И СОВМЕСТНАЯ ОХОТА
+    // =========================================================================
+    const animatronics = [];
+    let globalHuntTimer = 0; // Если > 0, все трое ведут скоординированную охоту
+
+    function spawnAnimatronics() {
+        const configs = [
+            {
+                id: 'rat',
+                name: 'Крыса-Повар',
+                mesh: createChefRatModel(),
+                spawnCell: { gx: 14, gz: 13 }, // В Главном Зале Пиццерии
+                baseSpeed: 3.1,
+                huntSpeed: 5.2
+            },
+            {
+                id: 'wolf',
+                name: 'Кошмарный Волк',
+                mesh: createTwistedWolfModel(),
+                spawnCell: { gx: 3, gz: 10 }, // В Западных коридорах со шкафчиками
+                baseSpeed: 3.4,
+                huntSpeed: 5.7
+            },
+            {
+                id: 'hare',
+                name: 'Плюшевый Заяц',
+                mesh: createPlushHareModel(),
+                spawnCell: { gx: 23, gz: 9 }, // В Восточном Атриуме
+                baseSpeed: 3.2,
+                huntSpeed: 5.4
+            }
+        ];
+
+        configs.forEach((cfg, index) => {
+            const pos = gridToWorld(cfg.spawnCell.gx, cfg.spawnCell.gz);
+            cfg.mesh.position.set(pos.x, 0, pos.z);
+            scene.add(cfg.mesh);
+
+            animatronics.push({
+                ...cfg,
+                index,
+                state: 'PLAY_PATROL', // 'PLAY_PATROL' | 'HUNT'
+                targetPos: pos.clone(),
+                playPartnerIndex: (index + 1) % 3,
+                repathTimer: 0,
+                stepAccumulator: 0
+            });
+        });
+    }
+
+    spawnAnimatronics();
+
+    function pickRandomWalkablePoint() {
+        for (let attempt = 0; attempt < 40; attempt++) {
+            const gx = 2 + Math.floor(Math.random() * (MAP_W - 4));
+            const gz = 2 + Math.floor(Math.random() * (MAP_H - 4));
+            // Не спавнить цель прямо в стартовой комнате охраны, если нет охоты
+            if (worldGrid[gz][gx] !== 1 && worldGrid[gz][gx] !== 2) {
+                return gridToWorld(gx, gz);
+            }
+        }
+        return gridToWorld(14, 14);
+    }
+
+    function hasLineOfSight(posA, posB) {
+        const dist = posA.distanceTo(posB);
+        const steps = Math.ceil(dist / 1.2);
+        for (let i = 1; i < steps; i++) {
+            const t = i / steps;
+            const x = posA.x + (posB.x - posA.x) * t;
+            const z = posA.z + (posB.z - posA.z) * t;
+            const { gx, gz } = worldToGrid(x, z);
+            if (gx < 0 || gx >= MAP_W || gz < 0 || gz >= MAP_H) return false;
+            if (worldGrid[gz][gx] === 1) return false;
+        }
+        return true;
+    }
+
+    function updateAnimatronics(dt, elapsed) {
+        const playerWorldPos = new THREE.Vector3();
+        camera.getWorldPosition(playerWorldPos);
+        playerWorldPos.y = 0;
+
+        if (globalHuntTimer > 0) {
+            globalHuntTimer -= dt;
+        }
+
+        const isHuntActive = globalHuntTimer > 0;
+        const huntBanner = document.getElementById('hunt-banner');
+        const dangerVig = document.getElementById('danger-vignette');
+
+        if (isHuntActive) {
+            huntBanner.classList.remove('hidden');
+            dangerVig.classList.remove('hidden');
+        } else {
+            huntBanner.classList.add('hidden');
+            dangerVig.classList.add('hidden');
+        }
+
+        let closestDist = 999;
+
+        animatronics.forEach((ai, idx) => {
+            const distToPlayer = ai.mesh.position.distanceTo(playerWorldPos);
+            if (distToPlayer < closestDist) closestDist = distToPlayer;
+
+            // Проверка: поймал ли аниматроник игрока
+            if (distToPlayer < 1.35 && gameState.active) {
+                triggerGameOver(false, `${ai.name} настиг вас в темноте комплекса!`);
+                return;
+            }
+
+            // Проверка обнаружения игрока (прямая видимость или близкий бег)
+            const visionRange = gameState.flashlightOn ? 18.5 : 11.5;
+            const canSee = distToPlayer < visionRange && hasLineOfSight(ai.mesh.position, playerWorldPos);
+            const canHearSprint = gameState.isSprinting && distToPlayer < 12.0;
+
+            if ((canSee || canHearSprint) && gameState.active) {
+                if (globalHuntTimer <= 0) {
+                    // Первый заметивший подаёт сигнал тревоги остальным!
+                    sound.playAlertScreech();
+                    showToast(`⚠ ${ai.name.toUpperCase()} ЗАМЕТИЛ ВАС И ПОЗВАЛ ОСТАЛЬНЫХ!`);
+                }
+                globalHuntTimer = 16.0; // 16 секунд скоординированной охоты всей стаей
+            }
+
+            ai.repathTimer -= dt;
+            let currentSpeed = ai.baseSpeed;
+
+            if (globalHuntTimer > 0) {
+                // РЕЖИМ СОВМЕСТНОЙ ОХОТЫ: все трое преследуют игрока с разных флангов
+                ai.state = 'HUNT';
+                currentSpeed = ai.huntSpeed;
+                const flankAngle = (idx - 1) * 0.65;
+                const flankOffset = new THREE.Vector3(Math.sin(flankAngle) * 2.2, 0, Math.cos(flankAngle) * 2.2);
+                ai.targetPos.copy(playerWorldPos).add(flankOffset);
+            } else {
+                // РЕЖИМ ИГРЫ В ДОГОНЯЛКИ ДРУГ С ДРУГОМ:
+                // Крыса гоняется за Зайцем, Заяц за Волком, Волк за Крысой!
+                ai.state = 'PLAY_PATROL';
+                const partner = animatronics[ai.playPartnerIndex];
+                const distToPartner = ai.mesh.position.distanceTo(partner.mesh.position);
+
+                if (distToPartner < 22) {
+                    // Играют в догонялки: бегут друг за другом по коридорам
+                    ai.targetPos.copy(partner.mesh.position);
+                    currentSpeed = ai.baseSpeed * 1.15;
+                    sound.playAnimatronicChatter(distToPlayer);
+                } else if (ai.repathTimer <= 0 || ai.mesh.position.distanceTo(ai.targetPos) < 1.5) {
+                    ai.targetPos = pickRandomWalkablePoint();
+                    ai.repathTimer = 6 + Math.random() * 5;
+                }
+            }
+
+            // Движение с обходом стен
+            const dir = new THREE.Vector3().subVectors(ai.targetPos, ai.mesh.position);
+            dir.y = 0;
+            if (dir.lengthSq() > 0.05) {
+                dir.normalize();
+                const step = currentSpeed * dt;
+                const nextX = ai.mesh.position.x + dir.x * step;
+                const nextZ = ai.mesh.position.z + dir.z * step;
+
+                if (isWalkable(nextX, nextZ, 0.55)) {
+                    ai.mesh.position.x = nextX;
+                    ai.mesh.position.z = nextZ;
+                } else if (isWalkable(nextX, ai.mesh.position.z, 0.55)) {
+                    ai.mesh.position.x = nextX;
+                } else if (isWalkable(ai.mesh.position.x, nextZ, 0.55)) {
+                    ai.mesh.position.z = nextZ;
+                } else {
+                    ai.targetPos = pickRandomWalkablePoint();
+                }
+
+                // Плавный поворот в сторону движения
+                const targetYaw = Math.atan2(dir.x, dir.z);
+                ai.mesh.rotation.y = targetYaw;
+
+                // Звуки тяжёлых шагов аниматроников
+                ai.stepAccumulator += step;
+                if (ai.stepAccumulator > 1.65) {
+                    ai.stepAccumulator = 0;
+                    sound.playFootstep(false, true, distToPlayer);
+                }
+            }
+
+            // Жуткиe подёргивания головы и покачивание при ходьбе
+            if (ai.mesh.userData.head) {
+                ai.mesh.userData.head.rotation.z = Math.sin(elapsed * 7 + idx) * 0.14;
+                ai.mesh.userData.head.rotation.y = Math.sin(elapsed * 3.5 + idx * 2) * 0.22;
+            }
+            ai.mesh.position.y = Math.abs(Math.sin(elapsed * 8 + idx)) * 0.07;
+        });
+
+        // Сердцебиение игрока при приближении опасности
+        if (closestDist < 15 && gameState.active) {
+            const intensity = Math.max(0.15, 1 - closestDist / 15);
+            sound.playHeartbeat(intensity);
+        }
+    }
+
+    // =========================================================================
+    // 8. ИНТЕРАКТИВНЫЕ АВАРИЙНЫЕ КЛЮЧ-КАРТЫ (5 ШТУК ПО ВСЕМУ КОМПЛЕКСУ)
+    // =========================================================================
+    const keycards = [];
+
+    function spawnKeycards() {
+        const keyLocations = [
+            { gx: 14, gz: 12, label: 'Ключ-карта Сцены Пиццерии' },
+            { gx: 3, gz: 7, label: 'Ключ-карта Западных Шкафчиков' },
+            { gx: 24, gz: 8, label: 'Ключ-карта Восточного Атриума' },
+            { gx: 21, gz: 21, label: 'Ключ-карта Южной Подсобки' },
+            { gx: 8, gz: 4, label: 'Ключ-карта Северного Коридора' }
+        ];
+
+        const cardGeo = new THREE.BoxGeometry(0.42, 0.04, 0.28);
+        const cardMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+
+        keyLocations.forEach((loc, i) => {
+            const pos = gridToWorld(loc.gx, loc.gz);
+            const pedestal = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.32, 0.38, 0.95, 10),
+                matMetal
+            );
+            pedestal.position.set(pos.x, 0.475, pos.z);
+            scene.add(pedestal);
+
+            const cardMesh = new THREE.Mesh(cardGeo, cardMat);
+            cardMesh.position.set(pos.x, 1.05, pos.z);
+            scene.add(cardMesh);
+
+            const glow = new THREE.PointLight(0xf59e0b, 0.85, 4.5);
+            glow.position.set(pos.x, 1.3, pos.z);
+            scene.add(glow);
+
+            keycards.push({
+                id: i,
+                label: loc.label,
+                mesh: cardMesh,
+                light: glow,
+                collected: false
+            });
+        });
+    }
+
+    spawnKeycards();
+
+    // =========================================================================
+    // 9. СОСТОЯНИЕ ИГРЫ, УПРАВЛЕНИЕ ПК И META QUEST 2 (WEBXR)
+    // =========================================================================
+    const gameState = {
+        active: false,
+        flashlightOn: true,
+        battery: 100,
+        stamina: 100,
+        isSprinting: false,
+        keysCollected: 0,
+        exitUnlocked: false,
+        cctvOpen: false,
+        shiftSeconds: 0
+    };
+
+    const keysPressed = {};
+    let cameraYaw = 0;
+    let cameraPitch = 0;
+    let snapTurnCooldown = 0;
+
+    function toggleFlashlight() {
+        if (!gameState.active) return;
+        if (gameState.battery <= 0) {
+            gameState.flashlightOn = false;
+            flashlight.visible = false;
+            showToast('Батарея фонаря разряжена!');
+            return;
+        }
+        gameState.flashlightOn = !gameState.flashlightOn;
+        flashlight.visible = gameState.flashlightOn;
+        sound.playClick(gameState.flashlightOn ? 750 : 450);
+    }
+
+    function toggleCCTV() {
+        if (!gameState.active) return;
+        gameState.cctvOpen = !gameState.cctvOpen;
+        const panel = document.getElementById('cctv-panel');
+        if (gameState.cctvOpen) {
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+        }
+        sound.playClick(580);
+    }
+
+    function showToast(msg) {
+        const el = document.getElementById('system-toast');
+        el.textContent = msg;
+        el.style.opacity = '1';
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => {
+            el.style.opacity = '0';
+        }, 3200);
+    }
+
+    function tryInteract() {
+        if (!gameState.active) return;
+        const playerPos = new THREE.Vector3();
+        camera.getWorldPosition(playerPos);
+
+        // Проверка подбора ключ-карт
+        for (const card of keycards) {
+            if (!card.collected) {
+                const dist = Math.hypot(playerPos.x - card.mesh.position.x, playerPos.z - card.mesh.position.z);
+                if (dist < 2.6) {
+                    card.collected = true;
+                    card.mesh.visible = false;
+                    card.light.visible = false;
+                    gameState.keysCollected++;
+                    sound.playKeycardPickup();
+
+                    document.getElementById('hud-keys').textContent = `${gameState.keysCollected} / 5`;
+                    showToast(`Получено: ${card.label}`);
+
+                    if (gameState.keysCollected >= 5) {
+                        gameState.exitUnlocked = true;
+                        document.getElementById('hud-exit-hint').classList.remove('hidden');
+                        showToast('ВСЕ 5 КЛЮЧЕЙ СОБРАНЫ! БЕГИТЕ К СЕВЕРНОМУ ВЫХОДУ!');
+                        if (exitShutterMesh) {
+                            exitShutterMesh.position.y = 5.2; // Поднимаем защитный затвор
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    // Обработка клавиатуры и мыши для ПК
+    window.addEventListener('keydown', (e) => {
+        keysPressed[e.code] = true;
+        if (e.code === 'KeyF') toggleFlashlight();
+        if (e.code === 'Tab' || e.code === 'KeyC') {
+            e.preventDefault();
+            toggleCCTV();
+        }
+        if (e.code === 'KeyE') tryInteract();
+    });
+
+    window.addEventListener('keyup', (e) => {
+        keysPressed[e.code] = false;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!gameState.active || renderer.xr.isPresenting) return;
+        if (document.pointerLockElement === canvas) {
+            cameraYaw -= e.movementX * 0.0022;
+            cameraPitch -= e.movementY * 0.0022;
+            cameraPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, cameraPitch));
+        }
+    });
+
+    canvas.addEventListener('click', () => {
+        if (gameState.active && !renderer.xr.isPresenting && document.pointerLockElement !== canvas) {
+            canvas.requestPointerLock();
+        }
+    });
+
+    // =========================================================================
+    // 10. WEBXR ПОДДЕРЖКА META QUEST 2 (СТИКИ, ПОВОРОТЫ, РУЧНОЙ ФОНАРИК)
+    // =========================================================================
+    const btnStartVR = document.getElementById('btn-start-vr');
+    const vrStatusMsg = document.getElementById('vr-status-msg');
+
+    if ('xr' in navigator) {
+        navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+            if (supported) {
+                btnStartVR.disabled = false;
+                vrStatusMsg.textContent = '✓ Гарнитура Meta Quest / WebXR готова к запуску';
+                vrStatusMsg.classList.replace('text-stone-500', 'text-emerald-400');
+            } else {
+                vrStatusMsg.textContent = 'WebXR гарнитура не обнаружена — доступен режим ПК';
+            }
+        }).catch(() => {
+            vrStatusMsg.textContent = 'Режим ПК готов (для VR откройте в браузере Meta Quest)';
+        });
+    } else {
+        vrStatusMsg.textContent = 'Браузер не поддерживает WebXR — используется режим ПК';
+    }
+
+    btnStartVR.addEventListener('click', async () => {
+        if (!navigator.xr) return;
+        try {
+            sound.init();
+            const session = await navigator.xr.requestSession('immersive-vr', {
+                optionalFeatures: ['local-floor', 'bounded-floor']
+            });
+            renderer.xr.setSession(session);
+
+            // Переносим фонарик на правый контроллер Quest 2
+            camera.remove(flashlight);
+            camera.remove(flashlightTarget);
+            flashlightTarget.position.set(0, 0, -5);
+            vrControllerRight.add(flashlight);
+            vrControllerRight.add(flashlightTarget);
+            flashlight.target = flashlightTarget;
+
+            startGameplay(true);
+        } catch (err) {
+            showToast('Не удалось запустить VR-сессию: ' + err.message);
+        }
+    });
+
+    document.getElementById('btn-start-pc').addEventListener('click', () => {
+        sound.init();
+        startGameplay(false);
+        canvas.requestPointerLock();
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+        location.reload();
+    });
+
+    function startGameplay(isVR) {
+        document.getElementById('start-screen').classList.add('hidden');
+        if (!isVR) {
+            document.getElementById('hud').classList.remove('hidden');
+        }
+        gameState.active = true;
+        showToast('Смена началась. Найдите 5 аварийных ключ-карт.');
+    }
+
+    function triggerGameOver(isVictory, message) {
+        gameState.active = false;
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
+        document.getElementById('hud').classList.add('hidden');
+        const endScreen = document.getElementById('end-screen');
+        const badge = document.getElementById('end-badge');
+        const title = document.getElementById('end-title');
+        const desc = document.getElementById('end-desc');
+
+        endScreen.classList.remove('hidden');
+        if (isVictory) {
+            badge.textContent = 'СМЕНА ЗАВЕРШЕНА // ЭВАКУАЦИЯ';
+            badge.className = 'inline-block px-3 py-1 rounded text-xs tracking-widest mb-3 bg-emerald-950 text-emerald-400 border border-emerald-700';
+            title.textContent = 'ВЫ ВЫБРАЛИСЬ ИЗ КОМПЛЕКСА';
+            desc.textContent = message;
+        } else {
+            sound.playAlertScreech();
+            badge.textContent = 'СВЯЗЬ С ОХРАННИКОМ ПРЕРВАНА';
+            badge.className = 'inline-block px-3 py-1 rounded text-xs tracking-widest mb-3 bg-red-950 text-red-400 border border-red-800';
+            title.textContent = 'ВЫ ПОЙМАНЫ';
+            desc.textContent = message;
+        }
+    }
+
+    function handleXRControllers(dt) {
+        const session = renderer.xr.getSession();
+        if (!session) return;
+
+        if (snapTurnCooldown > 0) snapTurnCooldown -= dt;
+
+        for (const source of session.inputSources) {
+            if (!source.gamepad) continue;
+            const axes = source.gamepad.axes;
+            // Quest Touch стики: axes[2] = X, axes[3] = Y
+            const stickX = axes.length >= 4 ? axes[2] : (axes[0] || 0);
+            const stickY = axes.length >= 4 ? axes[3] : (axes[1] || 0);
+
+            if (source.handedness === 'left') {
+                // Плавное перемещение в направлении взгляда гарнитуры
+                if (Math.abs(stickX) > 0.15 || Math.abs(stickY) > 0.15) {
+                    const forward = new THREE.Vector3();
+                    camera.getWorldDirection(forward);
+                    forward.y = 0;
+                    forward.normalize();
+
+                    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+                    const moveVec = new THREE.Vector3()
+                        .addScaledVector(forward, -stickY)
+                        .addScaledVector(right, stickX);
+
+                    const speed = 3.8 * dt;
+                    const nx = playerRig.position.x + moveVec.x * speed;
+                    const nz = playerRig.position.z + moveVec.z * speed;
+
+                    if (isWalkable(nx, playerRig.position.z)) playerRig.position.x = nx;
+                    if (isWalkable(playerRig.position.x, nz)) playerRig.position.z = nz;
+                    sound.playFootstep(false, false);
+                }
+            } else if (source.handedness === 'right') {
+                // Дискретный поворот (Snap Turn) на 35 градусов для комфорта в VR
+                if (snapTurnCooldown <= 0 && Math.abs(stickX) > 0.65) {
+                    playerRig.rotation.y -= Math.sign(stickX) * (Math.PI / 5);
+                    snapTurnCooldown = 0.28;
+                }
+                // Кнопка A/B для подбора ключ-карт в VR
+                if (source.gamepad.buttons.some((b, idx) => idx >= 3 && b.pressed)) {
+                    tryInteract();
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // 11. ОТРИСОВКА МИНИ-КАРТЫ ПЛАНШЕТА ОХРАНЫ
+    // =========================================================================
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const minimapCtx = minimapCanvas.getContext('2d');
+
+    function renderCCTVMinimap() {
+        if (!gameState.cctvOpen) return;
+        const w = minimapCanvas.width;
+        const h = minimapCanvas.height;
+        minimapCtx.fillStyle = '#050806';
+        minimapCtx.fillRect(0, 0, w, h);
+
+        const cw = w / MAP_W;
+        const ch = h / MAP_H;
+
+        for (let gz = 0; gz < MAP_H; gz++) {
+            for (let gx = 0; gx < MAP_W; gx++) {
+                const c = worldGrid[gz][gx];
+                if (c === 1) continue;
+                minimapCtx.fillStyle = c === 2 ? '#1e3a29' : (c === 5 ? '#7f1d1d' : '#1c221e');
+                minimapCtx.fillRect(gx * cw, gz * ch, cw - 0.5, ch - 0.5);
+            }
+        }
+
+        // Ключ-карты на радаре
+        keycards.forEach((card) => {
+            if (card.collected) return;
+            const { gx, gz } = worldToGrid(card.mesh.position.x, card.mesh.position.z);
+            minimapCtx.fillStyle = '#fbbf24';
+            minimapCtx.fillRect(gx * cw, gz * ch, cw, ch);
+        });
+
+        // Аниматроники на радаре
+        animatronics.forEach((ai) => {
+            const { gx, gz } = worldToGrid(ai.mesh.position.x, ai.mesh.position.z);
+            minimapCtx.fillStyle = '#ef4444';
+            minimapCtx.beginPath();
+            minimapCtx.arc((gx + 0.5) * cw, (gz + 0.5) * ch, 3.2, 0, Math.PI * 2);
+            minimapCtx.fill();
+        });
+
+        // Позиция игрока
+        const pWorld = new THREE.Vector3();
+        camera.getWorldPosition(pWorld);
+        const pg = worldToGrid(pWorld.x, pWorld.z);
+        minimapCtx.fillStyle = '#34d399';
+        minimapCtx.beginPath();
+        minimapCtx.arc((pg.gx + 0.5) * cw, (pg.gz + 0.5) * ch, 3.5, 0, Math.PI * 2);
+        minimapCtx.fill();
+    }
+
+    // =========================================================================
+    // 12. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ (60-90 FPS ДЛЯ ПК И META QUEST 2)
+    // =========================================================================
+    const clock = new THREE.Clock();
+
+    function updatePlayerPC(dt) {
+        if (renderer.xr.isPresenting) return;
+
+        camera.rotation.order = 'YXZ';
+        camera.rotation.y = cameraYaw;
+        camera.rotation.x = cameraPitch;
+
+        const forward = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
+        const right = new THREE.Vector3(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
+        const move = new THREE.Vector3();
+
+        if (keysPressed['KeyW'] || keysPressed['ArrowUp']) move.add(forward);
+        if (keysPressed['KeyS'] || keysPressed['ArrowDown']) move.sub(forward);
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) move.add(right);
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) move.sub(right);
+
+        const wantsSprint = (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) && move.lengthSq() > 0;
+        if (wantsSprint && gameState.stamina > 5) {
+            gameState.isSprinting = true;
+            gameState.stamina = Math.max(0, gameState.stamina - 24 * dt);
+        } else {
+            gameState.isSprinting = false;
+            gameState.stamina = Math.min(100, gameState.stamina + 14 * dt);
+        }
+
+        if (move.lengthSq() > 0) {
+            move.normalize();
+            const speed = (gameState.isSprinting ? 6.1 : 3.6) * dt;
+            const nx = playerRig.position.x + move.x * speed;
+            const nz = playerRig.position.z + move.z * speed;
+
+            if (isWalkable(nx, playerRig.position.z)) playerRig.position.x = nx;
+            if (isWalkable(playerRig.position.x, nz)) playerRig.position.z = nz;
+
+            sound.playFootstep(gameState.isSprinting, false);
+        }
+    }
+
+    function updateGameSystems(dt, elapsed) {
+        // Вращение лопастей вентилятора в комнате охраны
+        if (deskFanBlades) {
+            deskFanBlades.rotation.z += dt * 11;
+        }
+
+        // Мерцание неисправных потолочных ламп
+        flickeringLights.forEach((light, i) => {
+            if (Math.random() < 0.08) {
+                light.intensity = Math.random() > 0.35 ? 0.75 : 0.08;
+            }
+        });
+
+        // Вращение несобранных ключ-карт
+        keycards.forEach((card, i) => {
+            if (!card.collected) {
+                card.mesh.rotation.y = elapsed * 2 + i;
+                card.mesh.position.y = 1.05 + Math.sin(elapsed * 3 + i) * 0.06;
+            }
+        });
+
+        if (!gameState.active) return;
+
+        // Время смены (игровые часы с 00:00 до 06:00)
+        gameState.shiftSeconds += dt;
+        const simMinutes = Math.floor(gameState.shiftSeconds * 1.5);
+        const hrs = Math.floor(simMinutes / 60) % 6;
+        const mins = simMinutes % 60;
+        document.getElementById('hud-clock').textContent =
+            `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')} AM`;
+
+        // Расход батареи фонарика
+        if (gameState.flashlightOn) {
+            gameState.battery = Math.max(0, gameState.battery - 1.15 * dt);
+            if (gameState.battery <= 0) {
+                gameState.flashlightOn = false;
+                flashlight.visible = false;
+                showToast('Фонарь разрядился!');
+            }
+        } else {
+            // Медленная регенерация конденсатора фонаря в выключенном состоянии
+            gameState.battery = Math.min(100, gameState.battery + 0.45 * dt);
+        }
+
+        // Обновление UI полосок
+        document.getElementById('battery-text').textContent = `${Math.ceil(gameState.battery)}%`;
+        document.getElementById('battery-bar').style.width = `${gameState.battery}%`;
+        document.getElementById('stamina-text').textContent = `${Math.ceil(gameState.stamina)}%`;
+        document.getElementById('stamina-bar').style.width = `${gameState.stamina}%`;
+
+        // Определение текущего сектора и ближайших интерактивных объектов
+        const pPos = new THREE.Vector3();
+        camera.getWorldPosition(pPos);
+        const pg = worldToGrid(pPos.x, pPos.z);
+
+        for (const zone of roomZones) {
+            if (pg.gx >= zone.x1 && pg.gx <= zone.x2 && pg.gz >= zone.y1 && pg.gz <= zone.y2) {
+                document.getElementById('hud-location').textContent = zone.name;
+                break;
+            }
+        }
+
+        // Подсказка подбора ключ-карты
+        let nearCard = null;
+        for (const card of keycards) {
+            if (!card.collected && Math.hypot(pPos.x - card.mesh.position.x, pPos.z - card.mesh.position.z) < 2.6) {
+                nearCard = card;
+                break;
+            }
+        }
+
+        const promptEl = document.getElementById('interact-prompt');
+        if (nearCard) {
+            promptEl.textContent = `[E] Взять: ${nearCard.label}`;
+            promptEl.classList.remove('hidden');
+        } else {
+            promptEl.classList.add('hidden');
+        }
+
+        // Проверка победы: игрок дошёл до открытого Северного Выходного Шлюза
+        if (gameState.exitUnlocked && pg.gz <= 1 && pg.gx >= 12 && pg.gx <= 16) {
+            triggerGameOver(true, 'Вы активировали аварийный шлюз и покинули искажённый комплекс!');
+        }
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.onload = function () {
+        renderer.setAnimationLoop(() => {
+            const dt = Math.min(clock.getDelta(), 0.05);
+            const elapsed = clock.getElapsedTime();
+
+            if (renderer.xr.isPresenting) {
+                handleXRControllers(dt);
+            } else if (gameState.active) {
+                updatePlayerPC(dt);
+            }
+
+            updateGameSystems(dt, elapsed);
+            updateAnimatronics(dt, elapsed);
+            renderCCTVMinimap();
+
+            renderer.render(scene, camera);
+        });
+    };
+    </script>
+</body>
+</html>
+```
