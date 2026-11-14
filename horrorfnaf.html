@@ -5,114 +5,325 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>НОЧНАЯ СМЕНА: СЕКТОР-0</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Подключение Three.js через стабильный CDN jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;800&display=swap');
-
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
             user-select: none;
             -webkit-user-select: none;
         }
-
-        body, html {
-            margin: 0;
-            padding: 0;
+        html, body {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #050605;
-            font-family: 'Share Tech Mono', monospace;
-            color: #c8d1c5;
+            background-color: #060706;
+            color: #d6d3cb;
+            font-family: 'Courier New', Courier, monospace;
         }
-
         #game-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
+            display: block;
             width: 100%;
             height: 100%;
-            display: block;
+            position: fixed;
+            inset: 0;
             z-index: 1;
         }
 
-        /* Эффект старого ЭЛТ-монитора и виньетки */
+        /* Аналоговая виньетка и зернистость ЭЛТ-монитора */
         .crt-overlay {
             position: fixed;
             inset: 0;
+            z-index: 5;
             pointer-events: none;
-            z-index: 10;
-            background: 
-                radial-gradient(circle at center, transparent 55%, rgba(0, 0, 0, 0.85) 100%),
-                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%);
-            background-size: 100% 100%, 100% 4px;
+            background:
+                radial-gradient(circle at center, transparent 58%, rgba(0, 0, 0, 0.78) 100%),
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.14) 0px,
+                    rgba(0, 0, 0, 0.14) 1px,
+                    transparent 1px,
+                    transparent 3px
+                );
         }
 
-        .scanline {
-            width: 100%;
-            height: 8px;
-            background: rgba(150, 200, 150, 0.04);
+        /* Стартовый экран */
+        #start-screen {
             position: fixed;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-            z-index: 11;
-            animation: scanlineMove 7s linear infinite;
+            inset: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: radial-gradient(circle at center, #131714 0%, #050605 100%);
+            overflow-y: auto;
         }
-
-        @keyframes scanlineMove {
-            0% { transform: translateY(-10vh); }
-            100% { transform: translateY(110vh); }
+        .menu-card {
+            width: 100%;
+            max-width: 720px;
+            background: rgba(14, 17, 15, 0.96);
+            border: 2px solid #3c423d;
+            border-radius: 10px;
+            padding: 22px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
         }
-
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2c312d;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+            font-size: 12px;
+            color: #9ca39c;
+        }
+        .rec-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #c95b4b;
+            font-weight: bold;
+        }
         .rec-dot {
-            width: 10px;
-            height: 10px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
-            background-color: #b91c1c;
-            display: inline-block;
+            background-color: #c95b4b;
             animation: blink 1.2s infinite;
         }
-
         @keyframes blink {
-            0%, 49% { opacity: 1; }
-            50%, 100% { opacity: 0.15; }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+        .menu-title {
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #e6e2d6;
+            margin-bottom: 10px;
+        }
+        .menu-desc {
+            font-size: 13px;
+            line-height: 1.55;
+            color: #aba79c;
+            margin-bottom: 16px;
+        }
+        .menu-desc strong {
+            color: #ded9cb;
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        @media (max-width: 600px) {
+            .btn-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .btn-action {
+            padding: 15px 14px;
+            border-radius: 8px;
+            border: 1px solid #59615a;
+            background: #222723;
+            color: #ece8dc;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        }
+        .btn-action:hover {
+            background: #2f3631;
+            border-color: #848f85;
+        }
+        .btn-action:active {
+            transform: scale(0.98);
+        }
+        .btn-vr {
+            background: #28362c;
+            border-color: #5b7862;
+            color: #e3f0e5;
+        }
+        .btn-vr:hover {
+            background: #35473a;
+            border-color: #7ea387;
+        }
+        .quest-guide {
+            background: #0d100e;
+            border: 1px solid #2b302c;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #9ba19b;
+        }
+        .quest-guide-title {
+            color: #c8b88a;
+            font-weight: bold;
+            margin-bottom: 4px;
         }
 
-        .danger-pulse {
-            animation: dangerFlash 0.6s infinite alternate;
+        /* Игровой интерфейс (HUD для ПК) */
+        #hud {
+            position: fixed;
+            inset: 0;
+            z-index: 15;
+            pointer-events: none;
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+        }
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .hud-box {
+            background: rgba(10, 12, 11, 0.82);
+            border: 1px solid #3c423d;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .hud-label {
+            font-size: 11px;
+            color: #8f9690;
+            letter-spacing: 1px;
+        }
+        .hud-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #e2ded3;
+            margin-top: 2px;
+        }
+        .hud-alert {
+            background: rgba(82, 22, 18, 0.88);
+            border: 1px solid #b84a3e;
+            color: #f5d0cc;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            display: none;
+        }
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 12px;
+        }
+        .bar-wrap {
+            width: 170px;
+            height: 8px;
+            background: #1a1e1b;
+            border: 1px solid #3b403c;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .bar-fill-bat {
+            height: 100%;
+            width: 100%;
+            background: #bfa66a;
+            transition: width 0.2s;
+        }
+        .bar-fill-stam {
+            height: 100%;
+            width: 100%;
+            background: #6c8f73;
+            transition: width 0.1s;
         }
 
-        @keyframes dangerFlash {
-            from { box-shadow: inset 0 0 30px rgba(153, 27, 27, 0.1); }
-            to { box-shadow: inset 0 0 90px rgba(185, 28, 28, 0.65); }
+        /* Центральный прицел и подсказки */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            margin: -3px 0 0 -3px;
+            border-radius: 50%;
+            background: rgba(226, 222, 211, 0.6);
+            z-index: 14;
+            pointer-events: none;
+            display: none;
+        }
+        #interact-prompt {
+            position: fixed;
+            top: 56%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 16;
+            background: rgba(12, 15, 13, 0.9);
+            border: 1px solid #bfa66a;
+            color: #e8d8b0;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none;
+            display: none;
+        }
+        #toast-msg {
+            position: fixed;
+            top: 76px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            background: rgba(14, 17, 15, 0.94);
+            border: 1px solid #6b736c;
+            color: #ece8dc;
+            padding: 9px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+            max-width: 90vw;
+            opacity: 0;
+            transition: opacity 0.25s;
+            pointer-events: none;
         }
 
-        /* Стили кнопок меню в индустриальном аналоговом стиле */
-        .analog-btn {
-            background: linear-gradient(180deg, #1f241f 0%, #121512 100%);
-            border: 1px solid #485448;
-            color: #d4dfd0;
-            transition: all 0.15s ease;
-            text-shadow: 0 0 6px rgba(180, 220, 170, 0.3);
+        /* Планшет видеонаблюдения (Tab на ПК) */
+        #cctv-tablet {
+            position: fixed;
+            right: 16px;
+            bottom: 84px;
+            z-index: 20;
+            width: 270px;
+            background: rgba(10, 13, 11, 0.95);
+            border: 2px solid #48524a;
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            pointer-events: none;
+        }
+        #minimap-canvas {
+            width: 100%;
+            height: 220px;
+            background: #070908;
+            border: 1px solid #2d332e;
+            border-radius: 6px;
+            display: block;
         }
 
-        .analog-btn:hover:not(:disabled) {
-            background: linear-gradient(180deg, #2d362d 0%, #191f19 100%);
-            border-color: #84a380;
-            color: #ffffff;
-            transform: translateY(-1px);
-        }
-
-        .analog-btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .vr-btn {
-            background: linear-gradient(180deg, #2b3828 0%, #151d14 100%);
-            border: 1px solid #6b8f64;
+        /* Экран завершения игры */
+        #end-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: rgba(5, 6, 5, 0.94);
         }
     </style>
 </head>
@@ -120,1747 +331,1637 @@
 
     <canvas id="game-canvas"></canvas>
     <div class="crt-overlay"></div>
-    <div class="scanline"></div>
-    <div id="danger-vignette" class="fixed inset-0 pointer-events-none z-10 hidden danger-pulse"></div>
 
-    <!-- Внутриигровой интерфейс (HUD) -->
-    <div id="hud" class="fixed inset-0 pointer-events-none z-20 hidden flex flex-col justify-between p-4 sm:p-6">
-        <!-- Верхняя панель камеры / статуса -->
-        <div class="flex justify-between items-start">
-            <div class="bg-black/70 border border-stone-700/80 px-3 py-2 rounded">
-                <div class="flex items-center gap-2 text-xs sm:text-sm tracking-widest text-stone-300">
-                    <span class="rec-dot"></span>
-                    <span id="hud-location">СЕКТОР 01: ПОСТ ОХРАНЫ</span>
-                </div>
-                <div id="hud-clock" class="text-lg sm:text-xl text-amber-400/90 mt-0.5">00:00 AM</div>
+    <!-- Уведомления -->
+    <div id="toast-msg"></div>
+    <div id="crosshair"></div>
+    <div id="interact-prompt">[E] Взять ключ-карту</div>
+
+    <!-- HUD для экрана ПК -->
+    <div id="hud">
+        <div class="hud-top">
+            <div class="hud-box">
+                <div class="hud-label">СЕКТОР / ВРЕМЯ СМЕНЫ</div>
+                <div id="hud-time" class="hud-value">00:00 AM</div>
+                <div id="hud-zone" class="hud-label" style="margin-top:2px;">ПОСТ ОХРАНЫ</div>
             </div>
 
-            <!-- Статус угрозы / охоты -->
-            <div id="hunt-banner" class="hidden bg-red-950/85 border border-red-600 px-4 py-2 rounded text-center">
-                <div class="text-red-400 font-bold tracking-widest text-xs sm:text-sm">⚠ ТРЕВОГА: ОБЪЕКТЫ ВЕДУТ ОХОТУ ⚠</div>
-                <div class="text-[11px] text-red-200/80">ПРЯЧЬТЕСЬ ИЛИ РАЗОРВИТЕ ДИСТАНЦИЮ!</div>
+            <div id="hud-hunt-banner" class="hud-alert">
+                ⚠ ТРЕВОГА СЕКТОРА: ОБЪЕКТЫ ВЕДУТ ОХОТУ!
             </div>
 
-            <!-- Прогресс ключ-карт -->
-            <div class="bg-black/70 border border-stone-700/80 px-3 py-2 rounded text-right">
-                <div class="text-xs text-stone-400">АВАРИЙНЫЕ КЛЮЧИ</div>
-                <div id="hud-keys" class="text-lg sm:text-xl text-emerald-400 font-bold">0 / 5</div>
-                <div id="hud-exit-hint" class="text-[11px] text-stone-400 hidden">ВЫХОД ОТКРЫТ В АТРИУМЕ!</div>
+            <div class="hud-box" style="text-align:right;">
+                <div class="hud-label">КЛЮЧ-КАРТЫ ДОСТУПА</div>
+                <div id="hud-keys" class="hud-value" style="color:#9ec4a3;">0 / 4</div>
+                <div id="hud-exit-note" class="hud-label" style="color:#d4b979; display:none;">СЕВЕРНЫЙ ШЛЮЗ ОТКРЫТ!</div>
             </div>
         </div>
 
-        <!-- Центральный прицел и подсказка взаимодействия -->
-        <div class="flex flex-col items-center justify-center my-auto">
-            <div id="crosshair" class="w-1.5 h-1.5 rounded-full bg-stone-300/60"></div>
-            <div id="interact-prompt" class="mt-3 bg-black/80 border border-amber-500/60 text-amber-200 px-3 py-1 rounded text-xs sm:text-sm hidden">
-                [E] ВЗАИМОДЕЙСТВОВАТЬ
-            </div>
-            <div id="system-toast" class="mt-2 bg-stone-900/90 border border-stone-600 text-stone-200 px-4 py-1.5 rounded text-xs sm:text-sm opacity-0 transition-opacity duration-300">
-                Сообщение системы
-            </div>
-        </div>
-
-        <!-- Нижняя панель (Батарея фонаря, выносливость, управление) -->
-        <div class="flex flex-wrap justify-between items-end gap-4">
-            <div class="bg-black/75 border border-stone-700/80 p-3 rounded w-56 sm:w-64">
-                <div class="flex justify-between text-xs mb-1">
-                    <span class="text-stone-400">ФОНАРЬ [F]</span>
-                    <span id="battery-text" class="text-amber-300">100%</span>
-                </div>
-                <div class="w-full h-2 bg-stone-800 rounded overflow-hidden mb-2.5">
-                    <div id="battery-bar" class="h-full bg-amber-400 transition-all duration-150" style="width: 100%"></div>
-                </div>
-
-                <div class="flex justify-between text-xs mb-1">
-                    <span class="text-stone-400">ВЫНОСЛИВОСТЬ [SHIFT]</span>
-                    <span id="stamina-text" class="text-emerald-300">100%</span>
-                </div>
-                <div class="w-full h-2 bg-stone-800 rounded overflow-hidden">
-                    <div id="stamina-bar" class="h-full bg-emerald-500 transition-all duration-150" style="width: 100%"></div>
-                </div>
+        <div class="hud-bottom">
+            <div class="hud-box">
+                <div class="hud-label">ФОНАРЬ [F] / ВЫНОСЛИВОСТЬ [SHIFT]</div>
+                <div class="bar-wrap"><div id="bar-battery" class="bar-fill-bat"></div></div>
+                <div class="bar-wrap"><div id="bar-stamina" class="bar-fill-stam"></div></div>
             </div>
 
-            <!-- Мини-радар / планшет видеонаблюдения [TAB] -->
-            <div id="cctv-panel" class="hidden bg-black/90 border-2 border-stone-600 p-3 rounded w-72 sm:w-80 shadow-2xl">
-                <div class="flex justify-between items-center border-b border-stone-700 pb-1.5 mb-2">
-                    <span class="text-xs text-emerald-400 font-bold tracking-wider">ПЛАНШЕТ ОХРАНЫ // КАМЕРЫ</span>
-                    <span class="text-[10px] text-stone-400">[TAB] ЗАКРЫТЬ</span>
-                </div>
-                <canvas id="minimap-canvas" width="260" height="200" class="w-full h-44 bg-stone-950 border border-stone-800 rounded"></canvas>
-                <div class="mt-2 flex justify-between text-[11px] text-stone-400">
-                    <span><span class="text-emerald-400">●</span> ВЫ</span>
-                    <span><span class="text-amber-400">■</span> КЛЮЧИ</span>
-                    <span><span class="text-red-500">▲</span> ОБЪЕКТЫ</span>
-                </div>
-            </div>
-
-            <div class="bg-black/70 border border-stone-700/80 px-3 py-2 rounded text-[11px] text-stone-400 hidden md:block">
-                <div>[WASD] Движение &nbsp;|&nbsp; [SHIFT] Бег</div>
-                <div>[F] Фонарь &nbsp;|&nbsp; [TAB] Планшет камер &nbsp;|&nbsp; [E] Действие</div>
+            <div class="hud-box" style="font-size:11px; color:#9ba19b; line-height:1.5;">
+                [WASD] Ходьба &nbsp;|&nbsp; [Мышь] Обзор (клик по экрану)<br>
+                [F] Фонарик &nbsp;|&nbsp; [TAB] Радар камер &nbsp;|&nbsp; [E] Взять карту
             </div>
         </div>
     </div>
 
-    <!-- Стартовый экран / Меню (Поддержка ПК и Meta Quest 2 WebXR) -->
-    <div id="start-screen" class="fixed inset-0 z-30 flex items-center justify-center bg-black/90 p-4">
-        <div class="max-w-xl w-full bg-stone-950/95 border border-stone-700 p-6 sm:p-8 rounded-lg shadow-2xl">
-            <div class="flex items-center justify-between border-b border-stone-800 pb-3 mb-4">
-                <div class="flex items-center gap-2 text-xs text-red-400 tracking-widest">
-                    <span class="rec-dot"></span>
-                    <span>АРХИВНАЯ ЗАПИСЬ #04-92</span>
-                </div>
-                <span class="text-xs text-stone-500">WEBXR / DESKTOP READY</span>
+    <!-- Планшет охраны (TAB) -->
+    <div id="cctv-tablet">
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#9ba19b; margin-bottom:6px;">
+            <span>ТЕРМИНАЛ СЛЕЖЕНИЯ</span>
+            <span style="color:#c95b4b;">● REC</span>
+        </div>
+        <canvas id="minimap-canvas" width="250" height="220"></canvas>
+        <div style="font-size:10px; color:#868c87; margin-top:6px;">
+            Зелёный: Вы | Жёлтый: Ключ-карты | Красный: Объекты
+        </div>
+    </div>
+
+    <!-- Стартовый экран -->
+    <div id="start-screen">
+        <div class="menu-card">
+            <div class="menu-header">
+                <span class="rec-indicator"><span class="rec-dot"></span> КАМЕРА ПОСТА #01</span>
+                <span id="vr-support-label">Проверка WebXR...</span>
             </div>
 
-            <h1 class="text-2xl sm:text-3xl font-bold text-stone-100 tracking-wider mb-2">
-                НОЧНАЯ СМЕНА: СЕКТОР-0
-            </h1>
-            <p class="text-xs sm:text-sm text-stone-400 leading-relaxed mb-5">
-                Вы задремали на ночном дежурстве и очнулись в искажённой, бесконечной версии развлекательного комплекса и пиццерии, раскинувшейся на площади четырёх торговых центров.
+            <div class="menu-title">НОЧНАЯ СМЕНА: СЕКТОР-0</div>
+
+            <div class="menu-desc">
+                Вы задремали во время ночного дежурства и очнулись в искажённом, гигантском развлекательном комплексе и пиццерии размером с четыре торговых центра.
                 <br><br>
-                В пустых залах бродят и играют друг с другом в догонялки трое: <span class="text-stone-200">Крыса-Повар</span>, <span class="text-stone-200">Кошмарный Волк</span> и <span class="text-stone-200">Плюшевый Заяц</span>. Если хоть один из них заметит вас — они устроят совместную охоту. Найдите <span class="text-amber-300">5 аварийных ключ-карт</span> и откройте главный шлюз.
-            </p>
+                В тёмных залах бродят и играют друг с другом в догонялки трое:
+                <strong>Крыса-Повар</strong> (серый мех, бежевая морда, красный колпак и фартук),
+                <strong>Кошмарный Волк</strong> и <strong>Плюшевый Заяц</strong>.
+                Если хоть один из них увидит вас или услышит бег — прозвучит сирена, и вся тройка начнёт совместную охоту. Найдите <strong>4 ключ-карты</strong> и откройте Северный шлюз до 06:00.
+            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                <button id="btn-start-pc" class="analog-btn py-3.5 px-4 rounded font-bold text-sm tracking-wider cursor-pointer">
-                    ▶ ЗАПУСК НА ПК (КЛАВИАТУРА/МЫШЬ)
+            <div class="btn-grid">
+                <button id="btn-start-vr" class="btn-action btn-vr">
+                    ЗАПУСТИТЬ В VR (META QUEST 2)
                 </button>
-                <button id="btn-start-vr" class="analog-btn vr-btn py-3.5 px-4 rounded font-bold text-sm tracking-wider cursor-pointer" disabled>
-                    🥽 ВОЙТИ В VR (META QUEST 2)
+                <button id="btn-start-pc" class="btn-action">
+                    ИГРАТЬ НА ПК
                 </button>
             </div>
 
-            <div id="vr-status-msg" class="text-xs text-stone-500 text-center">
-                Проверка поддержки WebXR гарнитуры Meta Quest 2...
+            <div class="quest-guide">
+                <div class="quest-guide-title">Как открыть игру в шлеме Meta Quest 2:</div>
+                1. Сохраните этот файл как <strong>index.html</strong> и скопируйте его по USB-кабелю в папку <strong>Download</strong> шлема (или скачайте напрямую через браузер шлема).<br>
+                2. Наденьте Quest 2, откройте встроенный <strong>Meta Quest Browser</strong>, перейдите во вкладку <strong>Downloads / Файлы</strong> и откройте <strong>index.html</strong>.<br>
+                3. Нажмите <strong>«ЗАПУСТИТЬ В VR (META QUEST 2)»</strong>. Левый стик — ходьба, правый стик — поворот, правый курок — фонарик, на левом запястье — планшет с радаром.
             </div>
         </div>
     </div>
 
-    <!-- Экран поражения / победы -->
-    <div id="end-screen" class="fixed inset-0 z-40 hidden flex items-center justify-center bg-black/95 p-4">
-        <div class="max-w-md w-full bg-stone-950 border border-stone-700 p-6 sm:p-8 rounded-lg text-center">
-            <div id="end-badge" class="inline-block px-3 py-1 rounded text-xs tracking-widest mb-3 bg-red-950 text-red-400 border border-red-800">
-                СВЯЗЬ С ОХРАННИКОМ ПРЕРВАНА
-            </div>
-            <h2 id="end-title" class="text-2xl sm:text-3xl font-bold text-stone-100 mb-3">
-                ВЫ ПОЙМАНЫ
-            </h2>
-            <p id="end-desc" class="text-sm text-stone-400 mb-6">
-                Они нашли вас в темноте бесконечных коридоров...
-            </p>
-            <button id="btn-restart" class="analog-btn w-full py-3 px-4 rounded font-bold text-sm tracking-wider cursor-pointer">
-                ↻ НАЧАТЬ СМЕНУ ЗАНОВО
-            </button>
+    <!-- Экран поражения или победы -->
+    <div id="end-screen">
+        <div class="menu-card" style="max-width:480px; text-align:center;">
+            <div id="end-title" class="menu-title" style="color:#c95b4b;">СМЕНА ПРЕРВАНА</div>
+            <p id="end-reason" class="menu-desc">Один из объектов настиг вас в темноте.</p>
+            <button id="btn-restart" class="btn-action" style="width:100%;">НАЧАТЬ СМЕНУ ЗАНОВО</button>
         </div>
     </div>
 
     <script>
-    /**
-     * НОЧНАЯ СМЕНА: СЕКТОР-0
-     * Самодостаточный 3D-хоррор на выживание с поддержкой Meta Quest 2 (WebXR) и ПК.
-     * Вся геометрия, текстуры и звуки генерируются процедурно.
-     */
-
-    // =========================================================================
-    // 1. ПРОЦЕДУРНЫЙ ЗВУКОВОЙ ДВИЖОК (WEB AUDIO API)
-    // =========================================================================
-    class SoundEngine {
-        constructor() {
-            this.ctx = null;
-            this.masterGain = null;
-            this.ambientOsc = null;
-            this.lastStepTime = 0;
-            this.lastHeartbeatTime = 0;
-            this.lastPlayfulSoundTime = 0;
-        }
-
-        init() {
-            if (this.ctx) return;
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            this.ctx = new AudioCtx();
-            this.masterGain = this.ctx.createGain();
-            this.masterGain.gain.value = 0.45;
-            this.masterGain.connect(this.ctx.destination);
-            this.startAmbientHum();
-        }
-
-        startAmbientHum() {
-            if (!this.ctx) return;
-            // Низкий индустриальный гул вентиляции и люминесцентных ламп
-            const osc1 = this.ctx.createOscillator();
-            const osc2 = this.ctx.createOscillator();
-            const filter = this.ctx.createBiquadFilter();
-            const gain = this.ctx.createGain();
-
-            osc1.type = 'sawtooth';
-            osc1.frequency.value = 54;
-            osc2.type = 'sine';
-            osc2.frequency.value = 108;
-
-            filter.type = 'lowpass';
-            filter.frequency.value = 140;
-            gain.gain.value = 0.14;
-
-            osc1.connect(filter);
-            osc2.connect(filter);
-            filter.connect(gain);
-            gain.connect(this.masterGain);
-
-            osc1.start();
-            osc2.start();
-            this.ambientOsc = osc1;
-        }
-
-        playFootstep(isSprint = false, isHeavyAnimatronic = false, distance = 0) {
-            if (!this.ctx) return;
-            const now = this.ctx.currentTime;
-            const interval = isHeavyAnimatronic ? 0.48 : (isSprint ? 0.32 : 0.52);
-            if (!isHeavyAnimatronic && now - this.lastStepTime < interval) return;
-            if (!isHeavyAnimatronic) this.lastStepTime = now;
-
-            const volume = isHeavyAnimatronic ? Math.max(0, 1 - distance / 34) * 0.45 : (isSprint ? 0.25 : 0.14);
-            if (volume <= 0.01) return;
-
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = isHeavyAnimatronic ? 'triangle' : 'sine';
-            const baseFreq = isHeavyAnimatronic ? 58 : 95;
-            osc.frequency.setValueAtTime(baseFreq + Math.random() * 18, now);
-            osc.frequency.exponentialRampToValueAtTime(28, now + 0.12);
-
-            gain.gain.setValueAtTime(volume, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-
-            osc.connect(gain);
-            gain.connect(this.masterGain);
-            osc.start(now);
-            osc.stop(now + 0.15);
-        }
-
-        playHeartbeat(intensity = 0.5) {
-            if (!this.ctx) return;
-            const now = this.ctx.currentTime;
-            const beatInterval = Math.max(0.32, 0.85 - intensity * 0.5);
-            if (now - this.lastHeartbeatTime < beatInterval) return;
-            this.lastHeartbeatTime = now;
-
-            [0, 0.14].forEach((offset, idx) => {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(idx === 0 ? 65 : 52, now + offset);
-                osc.frequency.exponentialRampToValueAtTime(30, now + offset + 0.11);
-
-                gain.gain.setValueAtTime(0.28 * intensity, now + offset);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.12);
-
-                osc.connect(gain);
-                gain.connect(this.masterGain);
-                osc.start(now + offset);
-                osc.stop(now + offset + 0.13);
-            });
-        }
-
-        playClick(pitch = 600) {
-            if (!this.ctx) return;
-            const now = this.ctx.currentTime;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(pitch, now);
-            gain.gain.setValueAtTime(0.12, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-            osc.connect(gain);
-            gain.connect(this.masterGain);
-            osc.start(now);
-            osc.stop(now + 0.06);
-        }
-
-        playKeycardPickup() {
-            if (!this.ctx) return;
-            const now = this.ctx.currentTime;
-            [523.25, 659.25, 783.99].forEach((freq, i) => {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, now + i * 0.08);
-                gain.gain.setValueAtTime(0.2, now + i * 0.08);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
-                osc.connect(gain);
-                gain.connect(this.masterGain);
-                osc.start(now + i * 0.08);
-                osc.stop(now + i * 0.08 + 0.26);
-            });
-        }
-
-        // Звук, когда аниматроники «играют» друг с другом вдалеке
-        playAnimatronicChatter(distance) {
-            if (!this.ctx) return;
-            const now = this.ctx.currentTime;
-            if (now - this.lastPlayfulSoundTime < 4.5) return;
-            const vol = Math.max(0, 1 - distance / 42) * 0.18;
-            if (vol <= 0.01) return;
-            this.lastPlayfulSoundTime = now;
-
-            const notes = [220, 293, 246, 196];
-            notes.forEach((freq, idx) => {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(freq + (Math.random() - 0.5) * 20, now + idx * 0.14);
-                gain.gain.setValueAtTime(vol, now + idx * 0.14);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.18);
-                osc.connect(gain);
-                gain.connect(this.masterGain);
-                osc.start(now + idx * 0.14);
-                osc.stop(now + idx * 0.14 + 0.2);
-            });
-        }
-
-        // Пронзительный механический визг тревоги при обнаружении игрока
-        playAlertScreech() {
-            if (!this.ctx) return;
-            const now = this.ctx.currentTime;
-            const osc1 = this.ctx.createOscillator();
-            const osc2 = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc1.type = 'sawtooth';
-            osc2.type = 'square';
-            osc1.frequency.setValueAtTime(420, now);
-            osc1.frequency.linearRampToValueAtTime(980, now + 0.25);
-            osc1.frequency.exponentialRampToValueAtTime(190, now + 1.1);
-
-            osc2.frequency.setValueAtTime(435, now);
-            osc2.frequency.linearRampToValueAtTime(1020, now + 0.25);
-            osc2.frequency.exponentialRampToValueAtTime(160, now + 1.1);
-
-            gain.gain.setValueAtTime(0.35, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.15);
-
-            osc1.connect(gain);
-            osc2.connect(gain);
-            gain.connect(this.masterGain);
-
-            osc1.start(now);
-            osc2.start(now);
-            osc1.stop(now + 1.2);
-            osc2.stop(now + 1.2);
-        }
-    }
-
-    const sound = new SoundEngine();
-
-    // =========================================================================
-    // 2. ПРОЦЕДУРНЫЕ АНАЛОГОВЫЕ ТЕКСТУРЫ (БЕЗ ВНЕШНИХ КАРТИНОК)
-    // =========================================================================
-    function createCheckeredTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-        const size = 64;
-        for (let y = 0; y < 4; y++) {
-            for (let x = 0; x < 4; x++) {
-                const isDark = (x + y) % 2 === 0;
-                ctx.fillStyle = isDark ? '#141615' : '#8b8f88';
-                ctx.fillRect(x * size, y * size, size, size);
-                // Потёртости и грязь
-                ctx.fillStyle = 'rgba(0,0,0,0.28)';
-                ctx.fillRect(x * size + Math.random() * 20, y * size + Math.random() * 20, 24, 18);
-            }
-        }
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        return tex;
-    }
-
-    function createConcreteWallTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#252926';
-        ctx.fillRect(0, 0, 256, 256);
-
-        // Зернистость и потёки сырости
-        for (let i = 0; i < 1800; i++) {
-            const v = 25 + Math.floor(Math.random() * 25);
-            ctx.fillStyle = `rgb(${v},${v + 2},${v})`;
-            ctx.fillRect(Math.random() * 256, Math.random() * 256, 3, 3);
-        }
-        // Тёмная полоса плинтуса
-        ctx.fillStyle = '#141715';
-        ctx.fillRect(0, 210, 256, 46);
-        ctx.fillStyle = '#3a3f3a';
-        ctx.fillRect(0, 206, 256, 4);
-
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        return tex;
-    }
-
-    function createCRTMonitorTexture(label, accentColor = '#4ade80') {
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 192;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#071109';
-        ctx.fillRect(0, 0, 256, 192);
-
-        // Сетка и линии помех
-        ctx.strokeStyle = 'rgba(100, 180, 110, 0.15)';
-        for (let y = 0; y < 192; y += 6) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(256, y);
-            ctx.stroke();
-        }
-
-        ctx.fillStyle = accentColor;
-        ctx.font = 'bold 18px monospace';
-        ctx.fillText(label, 16, 34);
-        ctx.font = '13px monospace';
-        ctx.fillText('СИГНАЛ: СТАБИЛЬНЫЙ', 16, 62);
-        ctx.fillText('СЕКТОР: ОТКЛЮЧЕН', 16, 84);
-        ctx.strokeStyle = accentColor;
-        ctx.strokeRect(16, 102, 224, 68);
-        ctx.fillText('NO SIGNAL // REC', 28, 140);
-
-        return new THREE.CanvasTexture(canvas);
-    }
-
-    // =========================================================================
-    // 3. ГЕНЕРАЦИЯ ГИГАНТСКОГО ИСКАЖЁННОГО КОМПЛЕКСА (КАРТА)
-    // =========================================================================
-    const CELL_SIZE = 6; // Размер одной ячейки сетки в метрах (огромный масштаб)
-    const MAP_W = 29;
-    const MAP_H = 29;
-
-    // Типы ячеек:
-    // 1 = Стена
-    // 0 = Коридор / Атриум
-    // 2 = Комната охраны (старт)
-    // 3 = Главный зал пиццерии (шахматный пол, столы, сцена)
-    // 4 = Коридор со шкафчиками (можно прятаться в нишах)
-    // 5 = Главный выходной шлюз
-    const worldGrid = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(1));
-    const roomZones = [];
-
-    function carveRect(x1, y1, x2, y2, type) {
-        for (let y = Math.max(1, y1); y <= Math.min(MAP_H - 2, y2); y++) {
-            for (let x = Math.max(1, x1); x <= Math.min(MAP_W - 2, x2); x++) {
-                worldGrid[y][x] = type;
-            }
-        }
-    }
-
-    function buildComplexLayout() {
-        // 1. Стартовая Комната Охраны в центре-юге (x: 13..15, y: 23..26)
-        carveRect(13, 23, 15, 26, 2);
-        roomZones.push({ name: 'СЕКТОР 01: ПОСТ ОХРАНЫ', x1: 13, y1: 23, x2: 15, y2: 26 });
-
-        // Центральный коридор на север
-        carveRect(14, 18, 14, 22, 0);
-
-        // 2. Огромный Главный Зал Пиццерии и Сцена (x: 9..19, y: 11..17)
-        carveRect(9, 11, 19, 17, 3);
-        roomZones.push({ name: 'СЕКТОР 02: ГЛАВНЫЙ ЗАЛ ПИЦЦЕРИИ', x1: 9, y1: 11, x2: 19, y2: 17 });
-
-        // 3. Западное крыло: Длинные коридоры со шкафчиками (как на скриншотах)
-        carveRect(3, 14, 8, 14, 4);
-        carveRect(3, 6, 3, 24, 4);
-        carveRect(3, 24, 12, 24, 4);
-        carveRect(5, 8, 7, 11, 4);
-        carveRect(3, 10, 5, 10, 4);
-        roomZones.push({ name: 'СЕКТОР 03: ЗАПАДНЫЕ ШКАФЧИКИ', x1: 2, y1: 6, x2: 8, y2: 25 });
-
-        // 4. Восточное крыло: Искажённый торговый атриум и подсобки
-        carveRect(20, 14, 25, 14, 0);
-        carveRect(21, 6, 26, 12, 0);
-        carveRect(25, 13, 25, 25, 0);
-        carveRect(16, 25, 25, 25, 0);
-        carveRect(20, 19, 23, 22, 3);
-        roomZones.push({ name: 'СЕКТОР 04: ВОСТОЧНЫЙ АТРИУМ', x1: 20, y1: 6, x2: 26, y2: 25 });
-
-        // 5. Северный Сектор: Глубокий лабиринт и Главный Выходной Шлюз
-        carveRect(14, 5, 14, 10, 0);
-        carveRect(6, 3, 22, 5, 0);
-        carveRect(12, 1, 16, 3, 5); // Выходной шлюз на самом севере
-        roomZones.push({ name: 'СЕКТОР 05: СЕВЕРНЫЙ ШЛЮЗ ВЫХОДА', x1: 6, y1: 1, x2: 22, y2: 5 });
-
-        // Дополнительные связующие проходы для тактического обхода монстров
-        carveRect(7, 5, 7, 7, 0);
-        carveRect(21, 5, 21, 6, 0);
-        carveRect(9, 19, 13, 19, 0);
-        carveRect(15, 20, 19, 20, 0);
-    }
-
-    buildComplexLayout();
-
-    function gridToWorld(gx, gz) {
-        return new THREE.Vector3(
-            (gx - MAP_W / 2 + 0.5) * CELL_SIZE,
-            0,
-            (gz - MAP_H / 2 + 0.5) * CELL_SIZE
-        );
-    }
-
-    function worldToGrid(wx, wz) {
-        return {
-            gx: Math.floor(wx / CELL_SIZE + MAP_W / 2),
-            gz: Math.floor(wz / CELL_SIZE + MAP_H / 2)
-        };
-    }
-
-    function isWalkable(wx, wz, radius = 0.65) {
-        const offsets = [
-            [0, 0], [radius, 0], [-radius, 0], [0, radius], [0, -radius],
-            [radius * 0.7, radius * 0.7], [-radius * 0.7, radius * 0.7],
-            [radius * 0.7, -radius * 0.7], [-radius * 0.7, -radius * 0.7]
-        ];
-        for (const [ox, oz] of offsets) {
-            const { gx, gz } = worldToGrid(wx + ox, wz + oz);
-            if (gx < 0 || gx >= MAP_W || gz < 0 || gz >= MAP_H) return false;
-            if (worldGrid[gz][gx] === 1) return false;
-            if (worldGrid[gz][gx] === 5 && !gameState.exitUnlocked && gz <= 1) return false;
-        }
-        return true;
-    }
-
-    // =========================================================================
-    // 4. ИНИЦИАЛИЗАЦИЯ THREE.JS И WEBXR (META QUEST 2)
-    // =========================================================================
-    const canvas = document.getElementById('game-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = false; // Оптимизация для стабильных 72/90 FPS на Quest 2
-    renderer.xr.enabled = true;
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x040504);
-    scene.fog = new THREE.FogExp2(0x050705, 0.042);
-
-    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 85);
-
-    // Контейнер игрока (используется и для ПК, и для перемещения рига в VR)
-    const playerRig = new THREE.Group();
-    const startPos = gridToWorld(14, 25);
-    playerRig.position.set(startPos.x, 0, startPos.z);
-    camera.position.set(0, 1.65, 0);
-    playerRig.add(camera);
-    scene.add(playerRig);
-
-    // Фонарик игрока (крепится к камере на ПК или к правому контроллеру в VR)
-    const flashlight = new THREE.SpotLight(0xfff1d6, 2.6, 28, Math.PI / 5.2, 0.45, 1.3);
-    const flashlightTarget = new THREE.Object3D();
-    flashlightTarget.position.set(0, 0, -5);
-    camera.add(flashlight);
-    camera.add(flashlightTarget);
-    flashlight.target = flashlightTarget;
-
-    // Тусклый базовый свет вокруг игрока, чтобы не теряться в полной темноте
-    const personalAmbient = new THREE.PointLight(0x3a473b, 0.42, 7.5);
-    camera.add(personalAmbient);
-
-    // VR-контроллеры для Meta Quest 2
-    const vrControllerRight = renderer.xr.getController(0);
-    const vrControllerLeft = renderer.xr.getController(1);
-    playerRig.add(vrControllerRight);
-    playerRig.add(vrControllerLeft);
-
-    // Визуальная модель фонарика в руке для VR
-    const vrFlashlightMesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.025, 0.032, 0.18, 12),
-        new THREE.MeshStandardMaterial({ color: 0x1f2421, metalness: 0.7, roughness: 0.3 })
-    );
-    vrFlashlightMesh.rotation.x = Math.PI / 2;
-    vrControllerRight.add(vrFlashlightMesh);
-
-    vrControllerRight.addEventListener('selectstart', () => {
-        toggleFlashlight();
-    });
-
-    // =========================================================================
-    // 5. ПОСТРОЕНИЕ 3D-ОКРУЖЕНИЯ (КОМНАТА ОХРАНЫ, ПИЦЦЕРИЯ, ШКАФЧИКИ, АТРИУМ)
-    // =========================================================================
-    const checkeredTex = createCheckeredTexture();
-    checkeredTex.repeat.set(3, 3);
-    const wallTex = createConcreteWallTexture();
-    wallTex.repeat.set(2, 1);
-
-    const matWall = new THREE.MeshLambertMaterial({ map: wallTex, color: 0x8d948c });
-    const matFloorConcrete = new THREE.MeshLambertMaterial({ color: 0x1d201e });
-    const matFloorChecker = new THREE.MeshLambertMaterial({ map: checkeredTex });
-    const matCeiling = new THREE.MeshLambertMaterial({ color: 0x111312 });
-    const matLocker = new THREE.MeshLambertMaterial({ color: 0x3b4240 });
-    const matWood = new THREE.MeshLambertMaterial({ color: 0x3d2b1f });
-    const matMetal = new THREE.MeshLambertMaterial({ color: 0x2c302e });
-
-    const wallHeight = 4.4;
-    const wallGeo = new THREE.BoxGeometry(CELL_SIZE, wallHeight, CELL_SIZE);
-    const floorGeo = new THREE.PlaneGeometry(CELL_SIZE, CELL_SIZE);
-
-    const flickeringLights = [];
-    let deskFanBlades = null;
-    let exitShutterMesh = null;
-
-    function buildWorldGeometry() {
-        const levelGroup = new THREE.Group();
-
-        for (let gz = 0; gz < MAP_H; gz++) {
-            for (let gx = 0; gx < MAP_W; gx++) {
-                const cell = worldGrid[gz][gx];
-                const pos = gridToWorld(gx, gz);
-
-                if (cell === 1) {
-                    const wall = new THREE.Mesh(wallGeo, matWall);
-                    wall.position.set(pos.x, wallHeight / 2, pos.z);
-                    levelGroup.add(wall);
-                } else {
-                    // Пол
-                    const floorMat = (cell === 3 || cell === 2) ? matFloorChecker : matFloorConcrete;
-                    const floor = new THREE.Mesh(floorGeo, floorMat);
-                    floor.rotation.x = -Math.PI / 2;
-                    floor.position.set(pos.x, 0, pos.z);
-                    levelGroup.add(floor);
-
-                    // Потолок
-                    const ceil = new THREE.Mesh(floorGeo, matCeiling);
-                    ceil.rotation.x = Math.PI / 2;
-                    ceil.position.set(pos.x, wallHeight, pos.z);
-                    levelGroup.add(ceil);
-
-                    // Потолочные люминесцентные панели в ключевых точках
-                    if ((gx + gz) % 4 === 0) {
-                        const panel = new THREE.Mesh(
-                            new THREE.BoxGeometry(1.4, 0.08, 0.5),
-                            new THREE.MeshBasicMaterial({ color: cell === 2 ? 0x99d6a3 : 0xbec7ba })
-                        );
-                        panel.position.set(pos.x, wallHeight - 0.05, pos.z);
-                        levelGroup.add(panel);
-
-                        // Несколько реальных источников света для атмосферных теней и бликов
-                        if ((gx * 3 + gz) % 9 === 0 || cell === 2) {
-                            const light = new THREE.PointLight(cell === 2 ? 0x74b882 : 0x9aa698, 0.75, 13);
-                            light.position.set(pos.x, wallHeight - 0.4, pos.z);
-                            levelGroup.add(light);
-                            if (Math.random() < 0.45) {
-                                flickeringLights.push(light);
-                            }
-                        }
-                    }
-
-                    // Декор: Металлические шкафчики вдоль стен в коридорах (тип 4)
-                    if (cell === 4) {
-                        if (worldGrid[gz][gx - 1] === 1) {
-                            addLockerRow(levelGroup, pos.x - CELL_SIZE / 2 + 0.45, pos.z, Math.PI / 2);
-                        }
-                        if (worldGrid[gz][gx + 1] === 1) {
-                            addLockerRow(levelGroup, pos.x + CELL_SIZE / 2 - 0.45, pos.z, -Math.PI / 2);
-                        }
-                    }
-
-                    // Декор: Столы пиццерии в Главном Зале (тип 3)
-                    if (cell === 3 && gx % 2 === 1 && gz % 2 === 1 && !(gx >= 13 && gx <= 15 && gz === 11)) {
-                        addPizzeriaTable(levelGroup, pos.x, pos.z);
-                    }
-
-                    // Колонны в огромном Восточном Атриуме
-                    if (gx === 23 && (gz === 8 || gz === 11)) {
-                        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, wallHeight, 12), matWall);
-                        col.position.set(pos.x, wallHeight / 2, pos.z);
-                        levelGroup.add(col);
-                    }
-                }
-            }
-        }
-
-        // Детализация Комнаты Охраны (как на скриншотах 1, 2 и 7)
-        buildSecurityOfficeProps(levelGroup);
-
-        // Сцена в Главном Зале Пиццерии
-        buildPizzeriaStage(levelGroup);
-
-        // Главный Выходной Шлюз на севере
-        buildExitGate(levelGroup);
-
-        scene.add(levelGroup);
-    }
-
-    function addLockerRow(parent, x, z, rotY) {
-        const group = new THREE.Group();
-        group.position.set(x, 0, z);
-        group.rotation.y = rotY;
-        for (let i = -2; i <= 2; i++) {
-            const locker = new THREE.Mesh(new THREE.BoxGeometry(0.95, 2.25, 0.7), matLocker);
-            locker.position.set(i * 1.02, 1.125, 0);
-            group.add(locker);
-        }
-        parent.add(group);
-    }
-
-    function addPizzeriaTable(parent, x, z) {
-        const group = new THREE.Group();
-        group.position.set(x, 0, z);
-        const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 1.1), matWood);
-        top.position.y = 0.82;
-        group.add(top);
-
-        const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.82, 0.9), matMetal);
-        leg1.position.set(-0.85, 0.41, 0);
-        const leg2 = leg1.clone();
-        leg2.position.set(0.85, 0.41, 0);
-        group.add(leg1, leg2);
-
-        // Праздничный колпак на столе
-        const hat = new THREE.Mesh(
-            new THREE.ConeGeometry(0.14, 0.32, 8),
-            new THREE.MeshLambertMaterial({ color: 0x8f2424 })
-        );
-        hat.position.set(0.3, 1.04, 0.1);
-        group.add(hat);
-
-        parent.add(group);
-    }
-
-    function buildSecurityOfficeProps(parent) {
-        const center = gridToWorld(14, 24);
-        const office = new THREE.Group();
-        office.position.set(center.x, 0, center.z - 1.2);
-
-        // Металлический стол охраны
-        const desk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.85, 1.2), matMetal);
-        desk.position.set(0, 0.425, 0);
-        office.add(desk);
-
-        // 4 ЭЛТ-монитора на столе и стойке (как на фото 1 и 2)
-        const crtMat1 = new THREE.MeshBasicMaterial({ map: createCRTMonitorTexture('CAM-01 // ЗАЛ', '#4ade80') });
-        const crtMat2 = new THREE.MeshBasicMaterial({ map: createCRTMonitorTexture('CAM-04 // КОРИДОР', '#fbbf24') });
-
-        const monPositions = [
-            [-0.85, 1.18, 0, 0.25, crtMat1],
-            [0.0, 1.22, -0.1, 0, crtMat2],
-            [0.85, 1.18, 0, -0.25, crtMat1],
-            [0.85, 1.78, 0, -0.25, crtMat2]
-        ];
-
-        monPositions.forEach(([mx, my, mz, ry, screenMat]) => {
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.54, 0.56), new THREE.MeshLambertMaterial({ color: 0x454238 }));
-            body.position.set(mx, my, mz);
-            body.rotation.y = ry;
-            const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.4), screenMat);
-            screen.position.set(0, 0, 0.285);
-            body.add(screen);
-            office.add(body);
-        });
-
-        // Настольный вентилятор
-        const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.35, 10), matMetal);
-        fanBase.position.set(-1.35, 1.02, 0.2);
-        office.add(fanBase);
-
-        deskFanBlades = new THREE.Mesh(
-            new THREE.BoxGeometry(0.36, 0.05, 0.02),
-            new THREE.MeshLambertMaterial({ color: 0x808782 })
-        );
-        deskFanBlades.position.set(-1.35, 1.18, 0.34);
-        office.add(deskFanBlades);
-
-        parent.add(office);
-    }
-
-    function buildPizzeriaStage(parent) {
-        const stagePos = gridToWorld(14, 11);
-        const stage = new THREE.Group();
-        stage.position.set(stagePos.x, 0, stagePos.z - 1.2);
-
-        const platform = new THREE.Mesh(
-            new THREE.BoxGeometry(10, 0.55, 3.2),
-            new THREE.MeshLambertMaterial({ color: 0x2c1d18 })
-        );
-        platform.position.y = 0.275;
-        stage.add(platform);
-
-        // Красные занавесы по краям сцены
-        const curtainMat = new THREE.MeshLambertMaterial({ color: 0x5c1414 });
-        const leftCurtain = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.8, 0.6), curtainMat);
-        leftCurtain.position.set(-4.3, 2.1, 1.2);
-        const rightCurtain = leftCurtain.clone();
-        rightCurtain.position.set(4.3, 2.1, 1.2);
-        stage.add(leftCurtain, rightCurtain);
-
-        parent.add(stage);
-    }
-
-    function buildExitGate(parent) {
-        const exitPos = gridToWorld(14, 1);
-        const gateGroup = new THREE.Group();
-        gateGroup.position.set(exitPos.x, 0, exitPos.z - 1.5);
-
-        exitShutterMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(4.6, 3.6, 0.35),
-            new THREE.MeshLambertMaterial({ color: 0x3b2320 })
-        );
-        exitShutterMesh.position.y = 1.8;
-        gateGroup.add(exitShutterMesh);
-
-        const signScreen = new THREE.Mesh(
-            new THREE.PlaneGeometry(2.6, 0.65),
-            new THREE.MeshBasicMaterial({ map: createCRTMonitorTexture('ВЫХОД: НУЖНО 5 КЛЮЧЕЙ', '#ef4444') })
-        );
-        signScreen.position.set(0, 3.85, 0.2);
-        gateGroup.add(signScreen);
-
-        parent.add(gateGroup);
-    }
-
-    buildWorldGeometry();
-
-    // =========================================================================
-    // 6. СОЗДАНИЕ ТРЁХ АНИМАТРОНИКОВ (КРЫСА-ПОВАР, КОШМАРНЫЙ ВОЛК, ПЛЮШЕВЫЙ ЗАЯЦ)
-    // =========================================================================
-    function createChefRatModel() {
-        const root = new THREE.Group();
-
-        const greyFur = new THREE.MeshLambertMaterial({ color: 0x54585c });
-        const beigeSnout = new THREE.MeshLambertMaterial({ color: 0xc9b393 });
-        const redCloth = new THREE.MeshLambertMaterial({ color: 0x991b1b });
-        const darkEye = new THREE.MeshBasicMaterial({ color: 0x111111 });
-        const pupilGlow = new THREE.MeshBasicMaterial({ color: 0xffe4b5 });
-
-        // Туловище (высокое, слегка сутулое)
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 1.35, 12), greyFur);
-        torso.position.y = 1.35;
-        root.add(torso);
-
-        // Красный фартук повара
-        const apron = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.05, 0.14), redCloth);
-        apron.position.set(0, 1.25, 0.38);
-        root.add(apron);
-
-        // Лапы и ноги
-        const limbGeo = new THREE.CylinderGeometry(0.11, 0.1, 0.85, 8);
-        const legL = new THREE.Mesh(limbGeo, greyFur);
-        legL.position.set(-0.22, 0.42, 0);
-        const legR = legL.clone();
-        legR.position.set(0.22, 0.42, 0);
-        root.add(legL, legR);
-
-        const armL = new THREE.Mesh(limbGeo, greyFur);
-        armL.position.set(-0.52, 1.45, 0.1);
-        armL.rotation.z = 0.18;
-        const armR = new THREE.Mesh(limbGeo, greyFur);
-        armR.position.set(0.52, 1.45, 0.1);
-        armR.rotation.z = -0.18;
-        root.add(armL, armR);
-
-        // Длинный сегментированный хвост крысы
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.09, 1.35, 8), beigeSnout);
-        tail.position.set(0, 0.65, -0.55);
-        tail.rotation.x = -0.65;
-        root.add(tail);
-
-        // Голова с бежевой мордой, большими круглыми ушами и красным головным убором
-        const headGroup = new THREE.Group();
-        headGroup.position.set(0, 2.25, 0.05);
-
-        const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 14), greyFur);
-        headGroup.add(cranium);
-
-        // Бежевая вытянутая мордочка
-        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.55, 12), beigeSnout);
-        snout.rotation.x = Math.PI / 2;
-        snout.position.set(0, -0.05, 0.36);
-        headGroup.add(snout);
-
-        // Чёрный нос на кончике морды
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), darkEye);
-        nose.position.set(0, -0.04, 0.63);
-        headGroup.add(nose);
-
-        // Большие круглые уши крысы
-        const earGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.06, 16);
-        const earL = new THREE.Mesh(earGeo, greyFur);
-        earL.rotation.x = Math.PI / 2;
-        earL.position.set(-0.34, 0.28, -0.05);
-        const earR = earL.clone();
-        earR.position.set(0.34, 0.28, -0.05);
-        headGroup.add(earL, earR);
-
-        // Красный головной убор (поварской колпак / кепи)
-        const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.14, 14), redCloth);
-        hatBrim.position.set(0, 0.34, 0.02);
-        const hatTop = new THREE.Mesh(new THREE.SphereGeometry(0.33, 12, 12), redCloth);
-        hatTop.position.set(0, 0.48, 0.02);
-        headGroup.add(hatBrim, hatTop);
-
-        // Глаза
-        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), pupilGlow);
-        eyeL.position.set(-0.14, 0.08, 0.3);
-        const eyeR = eyeL.clone();
-        eyeR.position.set(0.14, 0.08, 0.3);
-        headGroup.add(eyeL, eyeR);
-
-        root.add(headGroup);
-        root.userData.head = headGroup;
-        return root;
-    }
-
-    function createTwistedWolfModel() {
-        const root = new THREE.Group();
-
-        const darkFur = new THREE.MeshLambertMaterial({ color: 0x1e2024 });
-        const endoMetal = new THREE.MeshLambertMaterial({ color: 0x6b7280 });
-        const toothMat = new THREE.MeshBasicMaterial({ color: 0xd6d3d1 });
-        const amberEye = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
-
-        // Массивный сгорбленный корпус волка
-        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.25, 0.65), darkFur);
-        torso.position.set(0, 1.35, 0.08);
-        torso.rotation.x = 0.24;
-        root.add(torso);
-
-        // Обнажённые металлические рёбра эндоскелета на груди
-        for (let i = 0; i < 3; i++) {
-            const rib = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.08, 0.7), endoMetal);
-            rib.position.set(0, 1.15 + i * 0.22, 0.1);
-            root.add(rib);
-        }
-
-        // Мощные лапы и когти
-        const legGeo = new THREE.BoxGeometry(0.24, 0.9, 0.26);
-        const legL = new THREE.Mesh(legGeo, darkFur);
-        legL.position.set(-0.28, 0.45, 0);
-        const legR = legL.clone();
-        legR.position.set(0.28, 0.45, 0);
-        root.add(legL, legR);
-
-        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.05, 0.22), darkFur);
-        armL.position.set(-0.62, 1.35, 0.22);
-        armL.rotation.x = -0.35;
-        const armR = armL.clone();
-        armR.position.set(0.62, 1.35, 0.22);
-        root.add(armL, armR);
-
-        // Кошмарная волчья голова с разинутой пастью и острыми зубами
-        const headGroup = new THREE.Group();
-        headGroup.position.set(0, 2.15, 0.28);
-
-        const skull = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.56, 0.65), darkFur);
-        headGroup.add(skull);
-
-        const upperJaw = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.2, 0.52), darkFur);
-        upperJaw.position.set(0, 0.02, 0.48);
-        headGroup.add(upperJaw);
-
-        const lowerJaw = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.48), endoMetal);
-        lowerJaw.position.set(0, -0.2, 0.45);
-        lowerJaw.rotation.x = 0.28;
-        headGroup.add(lowerJaw);
-
-        // Острые зубы
-        for (let t = -2; t <= 2; t++) {
-            const fang = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 5), toothMat);
-            fang.rotation.x = Math.PI;
-            fang.position.set(t * 0.08, -0.09, 0.68);
-            headGroup.add(fang);
-        }
-
-        // Острые волчьи уши
-        const earGeo = new THREE.ConeGeometry(0.14, 0.42, 6);
-        const earL = new THREE.Mesh(earGeo, darkFur);
-        earL.position.set(-0.22, 0.44, -0.05);
-        const earR = earL.clone();
-        earR.position.set(0.22, 0.44, -0.05);
-        headGroup.add(earL, earR);
-
-        // Тускло светящиеся янтарные глаза
-        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), amberEye);
-        eyeL.position.set(-0.16, 0.1, 0.33);
-        const eyeR = eyeL.clone();
-        eyeR.position.set(0.16, 0.1, 0.33);
-        headGroup.add(eyeL, eyeR);
-
-        root.add(headGroup);
-        root.userData.head = headGroup;
-        return root;
-    }
-
-    function createPlushHareModel() {
-        const root = new THREE.Group();
-
-        const plushSuit = new THREE.MeshLambertMaterial({ color: 0x736d45 });
-        const vestMat = new THREE.MeshLambertMaterial({ color: 0x3b2447 });
-        const stitchEye = new THREE.MeshBasicMaterial({ color: 0xa855f7 });
-
-        // Плюшевый костюм зайца со швами
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 1.3, 12), plushSuit);
-        torso.position.y = 1.3;
-        root.add(torso);
-
-        // Фиолетовая жилетка
-        const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.4, 0.85, 12), vestMat);
-        vest.position.y = 1.42;
-        root.add(vest);
-
-        const limbGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.85, 10);
-        const legL = new THREE.Mesh(limbGeo, plushSuit);
-        legL.position.set(-0.2, 0.42, 0);
-        const legR = legL.clone();
-        legR.position.set(0.2, 0.42, 0);
-        root.add(legL, legR);
-
-        const armL = new THREE.Mesh(limbGeo, plushSuit);
-        armL.position.set(-0.48, 1.42, 0);
-        armL.rotation.z = 0.25;
-        const armR = armL.clone();
-        armR.position.set(0.48, 1.42, 0);
-        armR.rotation.z = -0.25;
-        root.add(armL, armR);
-
-        // Голова с жуткой зашитой улыбкой и длинными надломленными ушами
-        const headGroup = new THREE.Group();
-        headGroup.position.set(0, 2.22, 0);
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 14), plushSuit);
-        headGroup.add(head);
-
-        // Длинные заячьи уши (одно надломлено вбок)
-        const earL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.72, 0.08), plushSuit);
-        earL.position.set(-0.16, 0.62, 0);
-        headGroup.add(earL);
-
-        const earRBase = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.42, 0.08), plushSuit);
-        earRBase.position.set(0.16, 0.48, 0);
-        const earRTip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.38, 0.08), plushSuit);
-        earRTip.position.set(0.26, 0.72, 0.12);
-        earRTip.rotation.z = -0.65;
-        earRTip.rotation.x = 0.4;
-        headGroup.add(earRBase, earRTip);
-
-        // Пуговичные светящиеся глаза
-        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), stitchEye);
-        eyeL.position.set(-0.14, 0.08, 0.34);
-        const eyeR = eyeL.clone();
-        eyeR.position.set(0.14, 0.08, 0.34);
-        headGroup.add(eyeL, eyeR);
-
-        root.add(headGroup);
-        root.userData.head = headGroup;
-        return root;
-    }
-
-    // =========================================================================
-    // 7. ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ: ИГРА ДРУГ С ДРУГОМ И СОВМЕСТНАЯ ОХОТА
-    // =========================================================================
-    const animatronics = [];
-    let globalHuntTimer = 0; // Если > 0, все трое ведут скоординированную охоту
-
-    function spawnAnimatronics() {
-        const configs = [
-            {
-                id: 'rat',
-                name: 'Крыса-Повар',
-                mesh: createChefRatModel(),
-                spawnCell: { gx: 14, gz: 13 }, // В Главном Зале Пиццерии
-                baseSpeed: 3.1,
-                huntSpeed: 5.2
-            },
-            {
-                id: 'wolf',
-                name: 'Кошмарный Волк',
-                mesh: createTwistedWolfModel(),
-                spawnCell: { gx: 3, gz: 10 }, // В Западных коридорах со шкафчиками
-                baseSpeed: 3.4,
-                huntSpeed: 5.7
-            },
-            {
-                id: 'hare',
-                name: 'Плюшевый Заяц',
-                mesh: createPlushHareModel(),
-                spawnCell: { gx: 23, gz: 9 }, // В Восточном Атриуме
-                baseSpeed: 3.2,
-                huntSpeed: 5.4
-            }
-        ];
-
-        configs.forEach((cfg, index) => {
-            const pos = gridToWorld(cfg.spawnCell.gx, cfg.spawnCell.gz);
-            cfg.mesh.position.set(pos.x, 0, pos.z);
-            scene.add(cfg.mesh);
-
-            animatronics.push({
-                ...cfg,
-                index,
-                state: 'PLAY_PATROL', // 'PLAY_PATROL' | 'HUNT'
-                targetPos: pos.clone(),
-                playPartnerIndex: (index + 1) % 3,
-                repathTimer: 0,
-                stepAccumulator: 0
-            });
-        });
-    }
-
-    spawnAnimatronics();
-
-    function pickRandomWalkablePoint() {
-        for (let attempt = 0; attempt < 40; attempt++) {
-            const gx = 2 + Math.floor(Math.random() * (MAP_W - 4));
-            const gz = 2 + Math.floor(Math.random() * (MAP_H - 4));
-            // Не спавнить цель прямо в стартовой комнате охраны, если нет охоты
-            if (worldGrid[gz][gx] !== 1 && worldGrid[gz][gx] !== 2) {
-                return gridToWorld(gx, gz);
-            }
-        }
-        return gridToWorld(14, 14);
-    }
-
-    function hasLineOfSight(posA, posB) {
-        const dist = posA.distanceTo(posB);
-        const steps = Math.ceil(dist / 1.2);
-        for (let i = 1; i < steps; i++) {
-            const t = i / steps;
-            const x = posA.x + (posB.x - posA.x) * t;
-            const z = posA.z + (posB.z - posA.z) * t;
-            const { gx, gz } = worldToGrid(x, z);
-            if (gx < 0 || gx >= MAP_W || gz < 0 || gz >= MAP_H) return false;
-            if (worldGrid[gz][gx] === 1) return false;
-        }
-        return true;
-    }
-
-    function updateAnimatronics(dt, elapsed) {
-        const playerWorldPos = new THREE.Vector3();
-        camera.getWorldPosition(playerWorldPos);
-        playerWorldPos.y = 0;
-
-        if (globalHuntTimer > 0) {
-            globalHuntTimer -= dt;
-        }
-
-        const isHuntActive = globalHuntTimer > 0;
-        const huntBanner = document.getElementById('hunt-banner');
-        const dangerVig = document.getElementById('danger-vignette');
-
-        if (isHuntActive) {
-            huntBanner.classList.remove('hidden');
-            dangerVig.classList.remove('hidden');
-        } else {
-            huntBanner.classList.add('hidden');
-            dangerVig.classList.add('hidden');
-        }
-
-        let closestDist = 999;
-
-        animatronics.forEach((ai, idx) => {
-            const distToPlayer = ai.mesh.position.distanceTo(playerWorldPos);
-            if (distToPlayer < closestDist) closestDist = distToPlayer;
-
-            // Проверка: поймал ли аниматроник игрока
-            if (distToPlayer < 1.35 && gameState.active) {
-                triggerGameOver(false, `${ai.name} настиг вас в темноте комплекса!`);
-                return;
+    (function () {
+        'use strict';
+
+        // =====================================================================
+        // 1. ВЕБ-АУДИО СИНТЕЗАТОР (БЕЗ ВНЕШНИХ ФАЙЛОВ)
+        // =====================================================================
+        class AnalogAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.humGain = null;
+                this.lastStepTime = 0;
             }
 
-            // Проверка обнаружения игрока (прямая видимость или близкий бег)
-            const visionRange = gameState.flashlightOn ? 18.5 : 11.5;
-            const canSee = distToPlayer < visionRange && hasLineOfSight(ai.mesh.position, playerWorldPos);
-            const canHearSprint = gameState.isSprinting && distToPlayer < 12.0;
-
-            if ((canSee || canHearSprint) && gameState.active) {
-                if (globalHuntTimer <= 0) {
-                    // Первый заметивший подаёт сигнал тревоги остальным!
-                    sound.playAlertScreech();
-                    showToast(`⚠ ${ai.name.toUpperCase()} ЗАМЕТИЛ ВАС И ПОЗВАЛ ОСТАЛЬНЫХ!`);
-                }
-                globalHuntTimer = 16.0; // 16 секунд скоординированной охоты всей стаей
-            }
-
-            ai.repathTimer -= dt;
-            let currentSpeed = ai.baseSpeed;
-
-            if (globalHuntTimer > 0) {
-                // РЕЖИМ СОВМЕСТНОЙ ОХОТЫ: все трое преследуют игрока с разных флангов
-                ai.state = 'HUNT';
-                currentSpeed = ai.huntSpeed;
-                const flankAngle = (idx - 1) * 0.65;
-                const flankOffset = new THREE.Vector3(Math.sin(flankAngle) * 2.2, 0, Math.cos(flankAngle) * 2.2);
-                ai.targetPos.copy(playerWorldPos).add(flankOffset);
-            } else {
-                // РЕЖИМ ИГРЫ В ДОГОНЯЛКИ ДРУГ С ДРУГОМ:
-                // Крыса гоняется за Зайцем, Заяц за Волком, Волк за Крысой!
-                ai.state = 'PLAY_PATROL';
-                const partner = animatronics[ai.playPartnerIndex];
-                const distToPartner = ai.mesh.position.distanceTo(partner.mesh.position);
-
-                if (distToPartner < 22) {
-                    // Играют в догонялки: бегут друг за другом по коридорам
-                    ai.targetPos.copy(partner.mesh.position);
-                    currentSpeed = ai.baseSpeed * 1.15;
-                    sound.playAnimatronicChatter(distToPlayer);
-                } else if (ai.repathTimer <= 0 || ai.mesh.position.distanceTo(ai.targetPos) < 1.5) {
-                    ai.targetPos = pickRandomWalkablePoint();
-                    ai.repathTimer = 6 + Math.random() * 5;
-                }
-            }
-
-            // Движение с обходом стен
-            const dir = new THREE.Vector3().subVectors(ai.targetPos, ai.mesh.position);
-            dir.y = 0;
-            if (dir.lengthSq() > 0.05) {
-                dir.normalize();
-                const step = currentSpeed * dt;
-                const nextX = ai.mesh.position.x + dir.x * step;
-                const nextZ = ai.mesh.position.z + dir.z * step;
-
-                if (isWalkable(nextX, nextZ, 0.55)) {
-                    ai.mesh.position.x = nextX;
-                    ai.mesh.position.z = nextZ;
-                } else if (isWalkable(nextX, ai.mesh.position.z, 0.55)) {
-                    ai.mesh.position.x = nextX;
-                } else if (isWalkable(ai.mesh.position.x, nextZ, 0.55)) {
-                    ai.mesh.position.z = nextZ;
-                } else {
-                    ai.targetPos = pickRandomWalkablePoint();
-                }
-
-                // Плавный поворот в сторону движения
-                const targetYaw = Math.atan2(dir.x, dir.z);
-                ai.mesh.rotation.y = targetYaw;
-
-                // Звуки тяжёлых шагов аниматроников
-                ai.stepAccumulator += step;
-                if (ai.stepAccumulator > 1.65) {
-                    ai.stepAccumulator = 0;
-                    sound.playFootstep(false, true, distToPlayer);
-                }
-            }
-
-            // Жуткиe подёргивания головы и покачивание при ходьбе
-            if (ai.mesh.userData.head) {
-                ai.mesh.userData.head.rotation.z = Math.sin(elapsed * 7 + idx) * 0.14;
-                ai.mesh.userData.head.rotation.y = Math.sin(elapsed * 3.5 + idx * 2) * 0.22;
-            }
-            ai.mesh.position.y = Math.abs(Math.sin(elapsed * 8 + idx)) * 0.07;
-        });
-
-        // Сердцебиение игрока при приближении опасности
-        if (closestDist < 15 && gameState.active) {
-            const intensity = Math.max(0.15, 1 - closestDist / 15);
-            sound.playHeartbeat(intensity);
-        }
-    }
-
-    // =========================================================================
-    // 8. ИНТЕРАКТИВНЫЕ АВАРИЙНЫЕ КЛЮЧ-КАРТЫ (5 ШТУК ПО ВСЕМУ КОМПЛЕКСУ)
-    // =========================================================================
-    const keycards = [];
-
-    function spawnKeycards() {
-        const keyLocations = [
-            { gx: 14, gz: 12, label: 'Ключ-карта Сцены Пиццерии' },
-            { gx: 3, gz: 7, label: 'Ключ-карта Западных Шкафчиков' },
-            { gx: 24, gz: 8, label: 'Ключ-карта Восточного Атриума' },
-            { gx: 21, gz: 21, label: 'Ключ-карта Южной Подсобки' },
-            { gx: 8, gz: 4, label: 'Ключ-карта Северного Коридора' }
-        ];
-
-        const cardGeo = new THREE.BoxGeometry(0.42, 0.04, 0.28);
-        const cardMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
-
-        keyLocations.forEach((loc, i) => {
-            const pos = gridToWorld(loc.gx, loc.gz);
-            const pedestal = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.32, 0.38, 0.95, 10),
-                matMetal
-            );
-            pedestal.position.set(pos.x, 0.475, pos.z);
-            scene.add(pedestal);
-
-            const cardMesh = new THREE.Mesh(cardGeo, cardMat);
-            cardMesh.position.set(pos.x, 1.05, pos.z);
-            scene.add(cardMesh);
-
-            const glow = new THREE.PointLight(0xf59e0b, 0.85, 4.5);
-            glow.position.set(pos.x, 1.3, pos.z);
-            scene.add(glow);
-
-            keycards.push({
-                id: i,
-                label: loc.label,
-                mesh: cardMesh,
-                light: glow,
-                collected: false
-            });
-        });
-    }
-
-    spawnKeycards();
-
-    // =========================================================================
-    // 9. СОСТОЯНИЕ ИГРЫ, УПРАВЛЕНИЕ ПК И META QUEST 2 (WEBXR)
-    // =========================================================================
-    const gameState = {
-        active: false,
-        flashlightOn: true,
-        battery: 100,
-        stamina: 100,
-        isSprinting: false,
-        keysCollected: 0,
-        exitUnlocked: false,
-        cctvOpen: false,
-        shiftSeconds: 0
-    };
-
-    const keysPressed = {};
-    let cameraYaw = 0;
-    let cameraPitch = 0;
-    let snapTurnCooldown = 0;
-
-    function toggleFlashlight() {
-        if (!gameState.active) return;
-        if (gameState.battery <= 0) {
-            gameState.flashlightOn = false;
-            flashlight.visible = false;
-            showToast('Батарея фонаря разряжена!');
-            return;
-        }
-        gameState.flashlightOn = !gameState.flashlightOn;
-        flashlight.visible = gameState.flashlightOn;
-        sound.playClick(gameState.flashlightOn ? 750 : 450);
-    }
-
-    function toggleCCTV() {
-        if (!gameState.active) return;
-        gameState.cctvOpen = !gameState.cctvOpen;
-        const panel = document.getElementById('cctv-panel');
-        if (gameState.cctvOpen) {
-            panel.classList.remove('hidden');
-        } else {
-            panel.classList.add('hidden');
-        }
-        sound.playClick(580);
-    }
-
-    function showToast(msg) {
-        const el = document.getElementById('system-toast');
-        el.textContent = msg;
-        el.style.opacity = '1';
-        clearTimeout(el._timer);
-        el._timer = setTimeout(() => {
-            el.style.opacity = '0';
-        }, 3200);
-    }
-
-    function tryInteract() {
-        if (!gameState.active) return;
-        const playerPos = new THREE.Vector3();
-        camera.getWorldPosition(playerPos);
-
-        // Проверка подбора ключ-карт
-        for (const card of keycards) {
-            if (!card.collected) {
-                const dist = Math.hypot(playerPos.x - card.mesh.position.x, playerPos.z - card.mesh.position.z);
-                if (dist < 2.6) {
-                    card.collected = true;
-                    card.mesh.visible = false;
-                    card.light.visible = false;
-                    gameState.keysCollected++;
-                    sound.playKeycardPickup();
-
-                    document.getElementById('hud-keys').textContent = `${gameState.keysCollected} / 5`;
-                    showToast(`Получено: ${card.label}`);
-
-                    if (gameState.keysCollected >= 5) {
-                        gameState.exitUnlocked = true;
-                        document.getElementById('hud-exit-hint').classList.remove('hidden');
-                        showToast('ВСЕ 5 КЛЮЧЕЙ СОБРАНЫ! БЕГИТЕ К СЕВЕРНОМУ ВЫХОДУ!');
-                        if (exitShutterMesh) {
-                            exitShutterMesh.position.y = 5.2; // Поднимаем защитный затвор
-                        }
-                    }
+            init() {
+                if (this.ctx) {
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
                     return;
                 }
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                this.ctx = new AudioCtx();
+
+                // Фоновый низкий гул вентиляции и люминесцентных ламп
+                const osc = this.ctx.createOscillator();
+                const filter = this.ctx.createBiquadFilter();
+                this.humGain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.value = 54;
+                filter.type = 'lowpass';
+                filter.frequency.value = 115;
+                this.humGain.gain.value = 0.032;
+
+                osc.connect(filter);
+                filter.connect(this.humGain);
+                this.humGain.connect(this.ctx.destination);
+                osc.start();
+            }
+
+            playClick(freq) {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq || 620, now);
+                osc.frequency.exponentialRampToValueAtTime(140, now + 0.05);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.06);
+            }
+
+            playFootstep(isSprint, isHeavy) {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const minGap = isSprint ? 0.30 : 0.48;
+                if (now - this.lastStepTime < minGap) return;
+                this.lastStepTime = now;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = isHeavy ? 'triangle' : 'sine';
+                const baseFreq = isHeavy ? 68 : 95;
+                osc.frequency.setValueAtTime(baseFreq + Math.random() * 14, now);
+                osc.frequency.exponentialRampToValueAtTime(28, now + 0.09);
+
+                gain.gain.setValueAtTime(isHeavy ? 0.11 : 0.055, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.095);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+
+            playKeycardPickup() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                [520, 780].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.09);
+                    gain.gain.setValueAtTime(0.11, now + i * 0.09);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.16);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + i * 0.09);
+                    osc.stop(now + i * 0.09 + 0.17);
+                });
+            }
+
+            playHuntAlarm() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const filter = this.ctx.createBiquadFilter();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(145, now);
+                osc.frequency.linearRampToValueAtTime(88, now + 0.85);
+
+                filter.type = 'lowpass';
+                filter.frequency.value = 420;
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.92);
             }
         }
-    }
 
-    // Обработка клавиатуры и мыши для ПК
-    window.addEventListener('keydown', (e) => {
-        keysPressed[e.code] = true;
-        if (e.code === 'KeyF') toggleFlashlight();
-        if (e.code === 'Tab' || e.code === 'KeyC') {
-            e.preventDefault();
-            toggleCCTV();
-        }
-        if (e.code === 'KeyE') tryInteract();
-    });
+        const audio = new AnalogAudioEngine();
 
-    window.addEventListener('keyup', (e) => {
-        keysPressed[e.code] = false;
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!gameState.active || renderer.xr.isPresenting) return;
-        if (document.pointerLockElement === canvas) {
-            cameraYaw -= e.movementX * 0.0022;
-            cameraPitch -= e.movementY * 0.0022;
-            cameraPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, cameraPitch));
-        }
-    });
-
-    canvas.addEventListener('click', () => {
-        if (gameState.active && !renderer.xr.isPresenting && document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock();
-        }
-    });
-
-    // =========================================================================
-    // 10. WEBXR ПОДДЕРЖКА META QUEST 2 (СТИКИ, ПОВОРОТЫ, РУЧНОЙ ФОНАРИК)
-    // =========================================================================
-    const btnStartVR = document.getElementById('btn-start-vr');
-    const vrStatusMsg = document.getElementById('vr-status-msg');
-
-    if ('xr' in navigator) {
-        navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-            if (supported) {
-                btnStartVR.disabled = false;
-                vrStatusMsg.textContent = '✓ Гарнитура Meta Quest / WebXR готова к запуску';
-                vrStatusMsg.classList.replace('text-stone-500', 'text-emerald-400');
-            } else {
-                vrStatusMsg.textContent = 'WebXR гарнитура не обнаружена — доступен режим ПК';
+        // =====================================================================
+        // 2. ПРОЦЕДУРНЫЕ ИНДУСТРИАЛЬНЫЕ ТЕКСТУРЫ (CANVAS TEXTURES)
+        // =====================================================================
+        function createCheckerFloorTexture() {
+            const c = document.createElement('canvas');
+            c.width = 256;
+            c.height = 256;
+            const ctx = c.getContext('2d');
+            const size = 64;
+            for (let y = 0; y < 4; y++) {
+                for (let x = 0; x < 4; x++) {
+                    const isDark = (x + y) % 2 === 0;
+                    ctx.fillStyle = isDark ? '#181a18' : '#b7b2a4';
+                    ctx.fillRect(x * size, y * size, size, size);
+                }
             }
-        }).catch(() => {
-            vrStatusMsg.textContent = 'Режим ПК готов (для VR откройте в браузере Meta Quest)';
-        });
-    } else {
-        vrStatusMsg.textContent = 'Браузер не поддерживает WebXR — используется режим ПК';
-    }
+            // Потёртости и пыль
+            for (let i = 0; i < 650; i++) {
+                ctx.fillStyle = 'rgba(20, 22, 18, 0.14)';
+                ctx.fillRect(Math.random() * 256, Math.random() * 256, 3, 3);
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(22, 22);
+            return tex;
+        }
 
-    btnStartVR.addEventListener('click', async () => {
-        if (!navigator.xr) return;
-        try {
-            sound.init();
-            const session = await navigator.xr.requestSession('immersive-vr', {
-                optionalFeatures: ['local-floor', 'bounded-floor']
+        function createConcreteWallTexture() {
+            const c = document.createElement('canvas');
+            c.width = 256;
+            c.height = 256;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#262b27';
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Нижняя индустриальная панель (тёмно-зелёная/ржавая)
+            ctx.fillStyle = '#1b221d';
+            ctx.fillRect(0, 140, 256, 116);
+            ctx.fillStyle = '#3a342a';
+            ctx.fillRect(0, 136, 256, 6);
+
+            // Зернистость и подтёки
+            for (let i = 0; i < 900; i++) {
+                ctx.fillStyle = i % 2 === 0 ? 'rgba(10,12,10,0.22)' : 'rgba(95,92,82,0.12)';
+                ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 4);
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createCRTTexture(title, line2, accentColor) {
+            const c = document.createElement('canvas');
+            c.width = 256;
+            c.height = 192;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#09120c';
+            ctx.fillRect(0, 0, 256, 192);
+
+            ctx.strokeStyle = accentColor || '#5e8c6a';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(8, 8, 240, 176);
+
+            ctx.fillStyle = accentColor || '#7fb08b';
+            ctx.font = 'bold 20px monospace';
+            ctx.fillText(title, 20, 56);
+
+            ctx.fillStyle = '#9ba89e';
+            ctx.font = '15px monospace';
+            ctx.fillText(line2, 20, 96);
+
+            // Полосы развёртки ЭЛТ
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            for (let y = 0; y < 192; y += 4) {
+                ctx.fillRect(0, y, 256, 2);
+            }
+            return new THREE.CanvasTexture(c);
+        }
+
+        // =====================================================================
+        // 3. ПЛАНИРОВКА ГИГАНТСКОГО ИСКАЖЁННОГО КОМПЛЕКСА (4 ТОРГОВЫХ ЦЕНТРА)
+        // =====================================================================
+        // 0 = Зал / коридор (шахматный пол пиццерии / ТЦ)
+        // 1 = Стена
+        // 2 = Комната охраны (старт)
+        // 3 = Сцена пиццерии
+        // 4 = Коридор со шкафчиками
+        // 5 = Северный шлюз выхода
+        const TILE_SIZE = 4.0;
+        const MAP_W = 31;
+        const MAP_H = 31;
+        const worldGrid = [];
+
+        function buildComplexLayout() {
+            for (let z = 0; z < MAP_H; z++) {
+                const row = [];
+                for (let x = 0; x < MAP_W; x++) {
+                    // Внешний периметр комплекса
+                    if (x === 0 || z === 0 || x === MAP_W - 1 || z === MAP_H - 1) {
+                        row.push(1);
+                    } else {
+                        row.push(0);
+                    }
+                }
+                worldGrid.push(row);
+            }
+
+            // Северный шлюз выхода (x: 13..17, z: 1..2)
+            for (let x = 13; x <= 17; x++) {
+                worldGrid[1][x] = 5;
+            }
+
+            // Главный зал пиццерии в центре (x: 9..21, z: 7..19) — открытое огромное пространство с колоннами
+            // Сцена пиццерии на севере главного зала (x: 12..18, z: 7..8)
+            for (let x = 12; x <= 18; x++) {
+                worldGrid[7][x] = 3;
+            }
+
+            // Стены-перегородки, отделяющие Западное крыло (шкафчики), Восточный атриум и Лабиринт
+            for (let z = 3; z <= 25; z++) {
+                if (z !== 6 && z !== 13 && z !== 21) {
+                    worldGrid[z][8] = 1;
+                    worldGrid[z][22] = 1;
+                }
+            }
+
+            // Западные коридоры со шкафчиками (x: 1..7, z: 2..26)
+            for (let z = 5; z <= 23; z += 4) {
+                for (let x = 2; x <= 6; x++) {
+                    if (x !== 4) worldGrid[z][x] = 1;
+                }
+            }
+            for (let z = 3; z <= 25; z++) {
+                if (worldGrid[z][2] === 0) worldGrid[z][2] = 4;
+                if (worldGrid[z][6] === 0) worldGrid[z][6] = 4;
+            }
+
+            // Восточный атриум и торговые галереи (x: 23..29, z: 2..26)
+            for (let z = 6; z <= 22; z += 5) {
+                for (let x = 24; x <= 28; x++) {
+                    if (x !== 26) worldGrid[z][x] = 1;
+                }
+            }
+
+            // Южный лабиринт служебных коридоров вокруг поста охраны (z: 20..28)
+            for (let x = 9; x <= 21; x++) {
+                if (x !== 11 && x !== 15 && x !== 19) {
+                    worldGrid[21][x] = 1;
+                }
+            }
+
+            // Комната охраны (x: 13..17, z: 25..28)
+            for (let z = 25; z <= 28; z++) {
+                worldGrid[z][12] = 1;
+                worldGrid[z][18] = 1;
+            }
+            for (let x = 12; x <= 18; x++) {
+                if (x !== 15) worldGrid[24][x] = 1; // Дверной проём в x=15, z=24
+            }
+            for (let z = 25; z <= 28; z++) {
+                for (let x = 13; x <= 17; x++) {
+                    worldGrid[z][x] = 2;
+                }
+            }
+        }
+
+        buildComplexLayout();
+
+        function gridToWorld(gx, gz) {
+            return {
+                x: (gx - MAP_W / 2 + 0.5) * TILE_SIZE,
+                z: (gz - MAP_H / 2 + 0.5) * TILE_SIZE
+            };
+        }
+
+        function worldToGrid(wx, wz) {
+            return {
+                gx: Math.floor(wx / TILE_SIZE + MAP_W / 2),
+                gz: Math.floor(wz / TILE_SIZE + MAP_H / 2)
+            };
+        }
+
+        function isWalkable(wx, wz, radius) {
+            const r = radius || 0.55;
+            const checks = [
+                [wx - r, wz - r],
+                [wx + r, wz - r],
+                [wx - r, wz + r],
+                [wx + r, wz + r]
+            ];
+            for (let i = 0; i < checks.length; i++) {
+                const { gx, gz } = worldToGrid(checks[i][0], checks[i][1]);
+                if (gx < 0 || gz < 0 || gx >= MAP_W || gz >= MAP_H) return false;
+                if (worldGrid[gz][gx] === 1) return false;
+            }
+            return true;
+        }
+
+        // =====================================================================
+        // 4. ИНИЦИАЛИЗАЦИЯ THREE.JS, СЦЕНЫ И WEBXR (META QUEST 2)
+        // =====================================================================
+        const canvas = document.getElementById('game-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.xr.enabled = true;
+        renderer.xr.setReferenceSpaceType('local-floor');
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050605);
+        scene.fog = new THREE.FogExp2(0x060806, 0.036);
+
+        const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 95);
+
+        // Риг игрока (перемещается в пространстве на ПК и в Meta Quest 2)
+        const playerRig = new THREE.Group();
+        const startWorld = gridToWorld(15, 27);
+        playerRig.position.set(startWorld.x, 0, startWorld.z);
+        camera.position.set(0, 1.65, 0);
+        playerRig.add(camera);
+        scene.add(playerRig);
+
+        // Базовое освещение комплекса (мрачное индустриальное)
+        const hemiLight = new THREE.HemisphereLight(0x4f5c52, 0x191815, 0.42);
+        scene.add(hemiLight);
+
+        // Фонарик игрока
+        const flashlight = new THREE.SpotLight(0xfff0d4, 2.8, 34, Math.PI / 5.2, 0.48, 1.2);
+        const flashlightTarget = new THREE.Object3D();
+        flashlightTarget.position.set(0, 0, -5);
+        camera.add(flashlight);
+        camera.add(flashlightTarget);
+        flashlight.target = flashlightTarget;
+
+        // Визуальный луч фонаря для VR-руки
+        const vrBeamMesh = new THREE.Mesh(
+            new THREE.ConeGeometry(1.1, 6.2, 16, 1, true),
+            new THREE.MeshBasicMaterial({
+                color: 0xf7e8c8,
+                transparent: true,
+                opacity: 0.055,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            })
+        );
+        vrBeamMesh.rotation.x = Math.PI / 2;
+        vrBeamMesh.position.set(0, 0, -3.2);
+        vrBeamMesh.visible = false;
+
+        // Слабый локальный свет вокруг игрока
+        const personalGlow = new THREE.PointLight(0x465248, 0.42, 7.5);
+        camera.add(personalGlow);
+
+        // VR-контроллеры Meta Quest 2
+        const vrControllerRight = renderer.xr.getController(0);
+        const vrControllerLeft = renderer.xr.getController(1);
+        playerRig.add(vrControllerRight);
+        playerRig.add(vrControllerLeft);
+
+        // 3D-модель фонарика на правом контроллере Quest 2
+        const vrFlashlightModel = new THREE.Group();
+        const flBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.022, 0.028, 0.18, 12),
+            new THREE.MeshLambertMaterial({ color: 0x262927 })
+        );
+        flBody.rotation.x = Math.PI / 2;
+        const flLens = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.026, 0.026, 0.018, 12),
+            new THREE.MeshBasicMaterial({ color: 0xfff0d4 })
+        );
+        flLens.rotation.x = Math.PI / 2;
+        flLens.position.z = -0.092;
+        vrFlashlightModel.add(flBody, flLens, vrBeamMesh);
+        vrFlashlightModel.visible = false;
+        vrControllerRight.add(vrFlashlightModel);
+
+        // 3D-наручный планшет с радаром и счётчиком карт на левом запястье в Quest 2
+        const wristCanvas = document.createElement('canvas');
+        wristCanvas.width = 256;
+        wristCanvas.height = 256;
+        const wristCtx = wristCanvas.getContext('2d');
+        const wristTex = new THREE.CanvasTexture(wristCanvas);
+
+        const wristTablet = new THREE.Group();
+        const tabletFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(0.16, 0.016, 0.19),
+            new THREE.MeshLambertMaterial({ color: 0x202421 })
+        );
+        const tabletScreen = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.144, 0.174),
+            new THREE.MeshBasicMaterial({ map: wristTex })
+        );
+        tabletScreen.rotation.x = -Math.PI / 2;
+        tabletScreen.position.y = 0.01;
+        wristTablet.add(tabletFrame, tabletScreen);
+        wristTablet.position.set(0.02, 0.03, 0.05);
+        wristTablet.rotation.z = -0.35;
+        wristTablet.visible = false;
+        vrControllerLeft.add(wristTablet);
+
+        // =====================================================================
+        // 5. ПОСТРОЕНИЕ ОКРУЖЕНИЯ (ПОСТ ОХРАНЫ, ПИЦЦЕРИЯ, ШКАФЧИКИ, ШЛЮЗ)
+        // =====================================================================
+        const animatedProps = [];
+        let exitDoorMesh = null;
+
+        function buildEnvironment() {
+            const floorTex = createCheckerFloorTexture();
+            const wallTex = createConcreteWallTexture();
+
+            const floorMat = new THREE.MeshLambertMaterial({ map: floorTex });
+            const ceilMat = new THREE.MeshLambertMaterial({ color: 0x121513 });
+            const wallMat = new THREE.MeshLambertMaterial({ map: wallTex });
+            const metalMat = new THREE.MeshLambertMaterial({ color: 0x2c322e });
+            const rustMat = new THREE.MeshLambertMaterial({ color: 0x452d22 });
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0x382a1e });
+            const redCurtainMat = new THREE.MeshLambertMaterial({ color: 0x5c1a16 });
+
+            const totalW = MAP_W * TILE_SIZE;
+            const totalH = MAP_H * TILE_SIZE;
+
+            // Пол и высокий потолок всего мегакомплекса
+            const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(totalW, totalH), floorMat);
+            floorMesh.rotation.x = -Math.PI / 2;
+            scene.add(floorMesh);
+
+            const ceilMesh = new THREE.Mesh(new THREE.PlaneGeometry(totalW, totalH), ceilMat);
+            ceilMesh.rotation.x = Math.PI / 2;
+            ceilMesh.position.y = 4.6;
+            scene.add(ceilMesh);
+
+            const wallGeo = new THREE.BoxGeometry(TILE_SIZE, 4.6, TILE_SIZE);
+            const lockerGeo = new THREE.BoxGeometry(0.85, 2.35, 0.75);
+            const tableTopGeo = new THREE.CylinderGeometry(1.1, 1.1, 0.1, 16);
+            const tableLegGeo = new THREE.CylinderGeometry(0.12, 0.18, 0.85, 8);
+
+            for (let gz = 0; gz < MAP_H; gz++) {
+                for (let gx = 0; gx < MAP_W; gx++) {
+                    const cell = worldGrid[gz][gx];
+                    const pos = gridToWorld(gx, gz);
+
+                    if (cell === 1) {
+                        const wall = new THREE.Mesh(wallGeo, wallMat);
+                        wall.position.set(pos.x, 2.3, pos.z);
+                        scene.add(wall);
+                    } else if (cell === 3) {
+                        // Сцена пиццерии с красным занавесом
+                        const stage = new THREE.Mesh(new THREE.BoxGeometry(TILE_SIZE, 0.55, TILE_SIZE), woodMat);
+                        stage.position.set(pos.x, 0.275, pos.z);
+                        scene.add(stage);
+
+                        if (gx === 12 || gx === 18) {
+                            const curtain = new THREE.Mesh(new THREE.BoxGeometry(0.7, 4.0, TILE_SIZE), redCurtainMat);
+                            curtain.position.set(pos.x, 2.3, pos.z);
+                            scene.add(curtain);
+                        }
+                    } else if (cell === 4) {
+                        // Металлические шкафчики вдоль коридоров
+                        const locker = new THREE.Mesh(lockerGeo, metalMat);
+                        locker.position.set(pos.x + (gx < 4 ? -1.3 : 1.3), 1.18, pos.z);
+                        scene.add(locker);
+                    }
+                }
+            }
+
+            // Столики и колонны в Главном зале пиццерии
+            const tableCoords = [
+                [11, 11], [15, 11], [19, 11],
+                [11, 15], [15, 15], [19, 15],
+                [11, 18], [19, 18]
+            ];
+            tableCoords.forEach(([gx, gz]) => {
+                const p = gridToWorld(gx, gz);
+                const top = new THREE.Mesh(tableTopGeo, new THREE.MeshLambertMaterial({ color: 0x9c9688 }));
+                top.position.set(p.x, 0.88, p.z);
+                const leg = new THREE.Mesh(tableLegGeo, metalMat);
+                leg.position.set(p.x, 0.44, p.z);
+                scene.add(top, leg);
             });
-            renderer.xr.setSession(session);
 
-            // Переносим фонарик на правый контроллер Quest 2
+            // Тусклые потолочные лампы в ключевых залах
+            const lampCoords = [
+                [15, 27], [15, 13], [15, 8], [4, 10], [26, 10], [15, 2]
+            ];
+            lampCoords.forEach(([gx, gz]) => {
+                const p = gridToWorld(gx, gz);
+                const lamp = new THREE.PointLight(0x88998a, 0.75, 16);
+                lamp.position.set(p.x, 4.1, p.z);
+                scene.add(lamp);
+
+                const fixture = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.4, 0.12, 0.45),
+                    new THREE.MeshBasicMaterial({ color: 0x9cb09e })
+                );
+                fixture.position.set(p.x, 4.52, p.z);
+                scene.add(fixture);
+            });
+
+            // Обустройство Поста охраны (x: 15, z: 27) — стол, 4 ЭЛТ-монитора, вентилятор
+            const officePos = gridToWorld(15, 26);
+            const desk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.85, 1.1), rustMat);
+            desk.position.set(officePos.x, 0.425, officePos.z);
+            scene.add(desk);
+
+            const monitorLabels = [
+                ['CAM 01: СЦЕНА', 'СИГНАЛ СТАБИЛЕН'],
+                ['CAM 02: ЗАЛ', 'ДВИЖЕНИЕ: ОБЪЕКТ 1'],
+                ['CAM 03: ШКАФЧИКИ', 'ШУМ В КОРИДОРЕ'],
+                ['CAM 04: АТРИУМ', 'ТРЕБУЕТСЯ 4 КЛЮЧА']
+            ];
+            for (let i = 0; i < 4; i++) {
+                const monGroup = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.5, 0.5), metalMat);
+                const screen = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.52, 0.4),
+                    new THREE.MeshBasicMaterial({
+                        map: createCRTTexture(monitorLabels[i][0], monitorLabels[i][1], '#6ea17b')
+                    })
+                );
+                screen.position.z = 0.255;
+                monGroup.add(body, screen);
+                monGroup.position.set(officePos.x - 1.05 + i * 0.7, 1.12, officePos.z);
+                scene.add(monGroup);
+            }
+
+            // Крутящийся настольный вентилятор в комнате охраны
+            const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.35, 10), metalMat);
+            fanBase.position.set(officePos.x + 1.35, 1.02, officePos.z + 0.1);
+            const fanBlades = new THREE.Mesh(
+                new THREE.BoxGeometry(0.42, 0.06, 0.03),
+                new THREE.MeshLambertMaterial({ color: 0x707872 })
+            );
+            fanBlades.position.set(officePos.x + 1.35, 1.18, officePos.z + 0.22);
+            scene.add(fanBase, fanBlades);
+            animatedProps.push({ mesh: fanBlades, rotZ: 9.0 });
+
+            // Северный шлюз выхода (x: 15, z: 1)
+            const exitPos = gridToWorld(15, 1);
+            const exitFrame = new THREE.Mesh(new THREE.BoxGeometry(5.2, 4.4, 0.6), rustMat);
+            exitFrame.position.set(exitPos.x, 2.2, exitPos.z - 1.2);
+            exitDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(4.4, 3.8, 0.4), metalMat);
+            exitDoorMesh.position.set(exitPos.x, 1.9, exitPos.z - 0.9);
+
+            const exitSign = new THREE.Mesh(
+                new THREE.PlaneGeometry(2.8, 0.7),
+                new THREE.MeshBasicMaterial({
+                    map: createCRTTexture('СЕВЕРНЫЙ ШЛЮЗ', 'НУЖНО 4 КЛЮЧ-КАРТЫ', '#c95b4b')
+                })
+            );
+            exitSign.position.set(exitPos.x, 4.05, exitPos.z - 0.65);
+            scene.add(exitFrame, exitDoorMesh, exitSign);
+        }
+
+        buildEnvironment();
+
+        // =====================================================================
+        // 6. АВАРИЙНЫЕ КЛЮЧ-КАРТЫ (4 ШТУКИ В РАЗНЫХ СЕКТОРАХ КОМПЛЕКСА)
+        // =====================================================================
+        const keycards = [];
+
+        function spawnKeycards() {
+            const locations = [
+                { gx: 15, gz: 8, name: 'Ключ-карта Сцены Пиццерии' },
+                { gx: 4, gz: 7, name: 'Ключ-карта Западных Шкафчиков' },
+                { gx: 26, gz: 8, name: 'Ключ-карта Восточного Атриума' },
+                { gx: 20, gz: 22, name: 'Ключ-карта Служебного Лабиринта' }
+            ];
+
+            const cardGeo = new THREE.BoxGeometry(0.45, 0.04, 0.3);
+            const cardMat = new THREE.MeshBasicMaterial({ color: 0xd9b86c });
+
+            locations.forEach((loc) => {
+                const p = gridToWorld(loc.gx, loc.gz);
+                const mesh = new THREE.Mesh(cardGeo, cardMat);
+                mesh.position.set(p.x, 1.15, p.z);
+
+                const light = new THREE.PointLight(0xd9b86c, 0.85, 5.5);
+                light.position.set(p.x, 1.45, p.z);
+
+                scene.add(mesh, light);
+                keycards.push({
+                    mesh: mesh,
+                    light: light,
+                    name: loc.name,
+                    collected: false
+                });
+            });
+        }
+
+        spawnKeycards();
+
+        // =====================================================================
+        // 7. ТРИ АНИМАТРОНИКА: КРЫСА-ПОВАР, КОШМАРНЫЙ ВОЛК, ПЛЮШЕВЫЙ ЗАЯЦ
+        // =====================================================================
+        function createRatChefModel() {
+            // Главный аниматроник: серый мех, бежевая морда, красный головной убор и фартук
+            const group = new THREE.Group();
+            const greyFur = new THREE.MeshLambertMaterial({ color: 0x5c6063 });
+            const beigeSnout = new THREE.MeshLambertMaterial({ color: 0xc9b393 });
+            const redCloth = new THREE.MeshLambertMaterial({ color: 0x8f221d });
+            const darkEye = new THREE.MeshBasicMaterial({ color: 0xd9534f });
+
+            // Туловище и красный фартук
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 1.15, 12), greyFur);
+            torso.position.y = 1.15;
+            const apron = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.95, 0.22), redCloth);
+            apron.position.set(0, 1.05, 0.36);
+
+            // Голова, большие круглые уши, вытянутая бежевая морда, красный колпак повара
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 14), greyFur);
+            head.position.y = 2.02;
+
+            const snout = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.48, 12), beigeSnout);
+            snout.rotation.x = Math.PI / 2;
+            snout.position.set(0, 1.96, 0.42);
+
+            const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0x1a1414 }));
+            nose.position.set(0, 1.96, 0.66);
+
+            const earL = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 14), greyFur);
+            earL.rotation.x = Math.PI / 2;
+            earL.position.set(-0.34, 2.34, 0);
+            const earR = earL.clone();
+            earR.position.x = 0.34;
+
+            // Красный головной убор (поварской колпак)
+            const hatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.24, 0.22, 12), redCloth);
+            hatBase.position.set(0, 2.42, 0);
+            const hatTop = new THREE.Mesh(new THREE.SphereGeometry(0.31, 12, 12), redCloth);
+            hatTop.position.set(0, 2.6, 0);
+
+            // Глаза
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), darkEye);
+            eyeL.position.set(-0.14, 2.1, 0.33);
+            const eyeR = eyeL.clone();
+            eyeR.position.x = 0.14;
+
+            // Длинный хвост крысы
+            const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1.35, 8), beigeSnout);
+            tail.rotation.x = -Math.PI / 3;
+            tail.position.set(0, 0.55, -0.65);
+
+            // Ноги и руки
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.65, 8), greyFur);
+            legL.position.set(-0.22, 0.32, 0);
+            const legR = legL.clone();
+            legR.position.x = 0.22;
+
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.85, 8), greyFur);
+            armL.rotation.x = Math.PI / 4;
+            armL.position.set(-0.52, 1.25, 0.25);
+            const armR = armL.clone();
+            armR.position.x = 0.52;
+
+            group.add(torso, apron, head, snout, nose, earL, earR, hatBase, hatTop, eyeL, eyeR, tail, legL, legR, armL, armR);
+            return group;
+        }
+
+        function createNightmareWolfModel() {
+            // Кошмарный Волк: угольный облезлый корпус, длинная зубастая пасть, острые уши, когти
+            const group = new THREE.Group();
+            const darkFur = new THREE.MeshLambertMaterial({ color: 0x26292c });
+            const endoMetal = new THREE.MeshLambertMaterial({ color: 0x45494d });
+            const toothMat = new THREE.MeshBasicMaterial({ color: 0xd6d2c4 });
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xe0e0d8 });
+
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.88, 1.25, 0.56), darkFur);
+            torso.position.y = 1.25;
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.56, 0.64), darkFur);
+            head.position.set(0, 2.15, 0.08);
+
+            // Вытянутая волчья пасть с клыками
+            const upperJaw = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.2, 0.58), darkFur);
+            upperJaw.position.set(0, 2.12, 0.55);
+            const lowerJaw = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.54), endoMetal);
+            lowerJaw.rotation.x = 0.25;
+            lowerJaw.position.set(0, 1.94, 0.52);
+
+            for (let i = -2; i <= 2; i++) {
+                const fang = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.11, 5), toothMat);
+                fang.rotation.x = Math.PI;
+                fang.position.set(i * 0.065, 2.0, 0.78);
+                group.add(fang);
+            }
+
+            // Острые волчьи уши
+            const earL = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.44, 6), darkFur);
+            earL.position.set(-0.22, 2.62, 0.05);
+            const earR = earL.clone();
+            earR.position.x = 0.22;
+
+            // Пустые глазницы со светящимися точками
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
+            eyeL.position.set(-0.16, 2.24, 0.41);
+            const eyeR = eyeL.clone();
+            eyeR.position.x = 0.16;
+
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.72, 8), darkFur);
+            legL.position.set(-0.25, 0.36, 0);
+            const legR = legL.clone();
+            legR.position.x = 0.25;
+
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 1.0, 8), darkFur);
+            armL.rotation.x = Math.PI / 3;
+            armL.position.set(-0.56, 1.35, 0.32);
+            const armR = armL.clone();
+            armR.position.x = 0.56;
+
+            group.add(torso, head, upperJaw, lowerJaw, earL, earR, eyeL, eyeR, legL, legR, armL, armR);
+            return group;
+        }
+
+        function createPlushRabbitModel() {
+            // Плюшевый Заяц: потёртый жёлто-бежевый плюш, тёмно-фиолетовый жилет, бабочка, надломленные длинные уши
+            const group = new THREE.Group();
+            const plushGold = new THREE.MeshLambertMaterial({ color: 0x9e8c56 });
+            const vestPurple = new THREE.MeshLambertMaterial({ color: 0x3b2447 });
+            const eyeGlow = new THREE.MeshBasicMaterial({ color: 0x8f56a8 });
+
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 1.1, 12), plushGold);
+            torso.position.y = 1.1;
+
+            const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.43, 0.72, 12), vestPurple);
+            vest.position.y = 1.22;
+
+            const bowTie = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.1), vestPurple);
+            bowTie.position.set(0, 1.62, 0.36);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 14), plushGold);
+            head.position.y = 1.98;
+
+            const cheeks = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.2, 0.26), plushGold);
+            cheeks.position.set(0, 1.88, 0.28);
+
+            // Длинные заячьи уши (одно надломлено вперёд)
+            const earL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.75, 0.07), plushGold);
+            earL.position.set(-0.15, 2.62, 0);
+
+            const earRBase = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.42, 0.07), plushGold);
+            earRBase.position.set(0.15, 2.46, 0);
+            const earRTip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.38, 0.07), plushGold);
+            earRTip.rotation.x = 0.75;
+            earRTip.position.set(0.15, 2.72, 0.14);
+
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeGlow);
+            eyeL.position.set(-0.13, 2.04, 0.33);
+            const eyeR = eyeL.clone();
+            eyeR.position.x = 0.13;
+
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.62, 8), plushGold);
+            legL.position.set(-0.19, 0.31, 0);
+            const legR = legL.clone();
+            legR.position.x = 0.19;
+
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.82, 8), plushGold);
+            armL.rotation.z = 0.22;
+            armL.position.set(-0.46, 1.15, 0.12);
+            const armR = armL.clone();
+            armR.rotation.z = -0.22;
+            armR.position.x = 0.46;
+
+            group.add(torso, vest, bowTie, head, cheeks, earL, earRBase, earRTip, eyeL, eyeR, legL, legR, armL, armR);
+            return group;
+        }
+
+        // =====================================================================
+        // 8. ИИ: ДОГОНЯЛКИ ДРУГ ЗА ДРУГОМ И СОВМЕСТНАЯ ОХОТА НА ИГРОКА
+        // =====================================================================
+        const animatronics = [];
+        let globalHuntTimer = 0;
+        let tagLeaderIndex = 0; // Кто сейчас убегает в догонялках между собой
+        let tagSwitchTimer = 14;
+
+        function initAnimatronics() {
+            const roster = [
+                {
+                    name: 'Крыса-Повар',
+                    mesh: createRatChefModel(),
+                    gx: 15,
+                    gz: 9,
+                    patrolSpeed: 2.75,
+                    huntSpeed: 4.35
+                },
+                {
+                    name: 'Кошмарный Волк',
+                    mesh: createNightmareWolfModel(),
+                    gx: 5,
+                    gz: 12,
+                    patrolSpeed: 2.95,
+                    huntSpeed: 4.65
+                },
+                {
+                    name: 'Плюшевый Заяц',
+                    mesh: createPlushRabbitModel(),
+                    gx: 25,
+                    gz: 14,
+                    patrolSpeed: 2.85,
+                    huntSpeed: 4.45
+                }
+            ];
+
+            roster.forEach((item) => {
+                const p = gridToWorld(item.gx, item.gz);
+                item.mesh.position.set(p.x, 0, p.z);
+                scene.add(item.mesh);
+
+                animatronics.push({
+                    name: item.name,
+                    mesh: item.mesh,
+                    patrolSpeed: item.patrolSpeed,
+                    huntSpeed: item.huntSpeed,
+                    targetX: p.x,
+                    targetZ: p.z,
+                    retargetTimer: 0
+                });
+            });
+        }
+
+        initAnimatronics();
+
+        function pickRandomWalkableTarget() {
+            for (let tries = 0; tries < 40; tries++) {
+                const gx = 2 + Math.floor(Math.random() * (MAP_W - 4));
+                const gz = 2 + Math.floor(Math.random() * (MAP_H - 7)); // Не заходим внутрь стартовой каморки без причины
+                if (worldGrid[gz][gx] === 0 || worldGrid[gz][gx] === 4) {
+                    return gridToWorld(gx, gz);
+                }
+            }
+            return gridToWorld(15, 13);
+        }
+
+        function hasLineOfSight(ax, az, bx, bz) {
+            const dx = bx - ax;
+            const dz = bz - az;
+            const dist = Math.hypot(dx, dz);
+            const steps = Math.ceil(dist / 1.0);
+            for (let i = 1; i < steps; i++) {
+                const t = i / steps;
+                const { gx, gz } = worldToGrid(ax + dx * t, az + dz * t);
+                if (gx < 0 || gz < 0 || gx >= MAP_W || gz >= MAP_H) return false;
+                if (worldGrid[gz][gx] === 1) return false;
+            }
+            return true;
+        }
+
+        // =====================================================================
+        // 9. СОСТОЯНИЕ ИГРЫ И УПРАВЛЕНИЕ (ПК + META QUEST 2 WEBXR)
+        // =====================================================================
+        const gameState = {
+            active: false,
+            ended: false,
+            shiftMinutes: 0, // 0..360 (от 00:00 до 06:00)
+            battery: 100,
+            stamina: 100,
+            flashlightOn: true,
+            isSprinting: false,
+            cctvOpen: false,
+            keysCollected: 0,
+            exitUnlocked: false
+        };
+
+        const keysPressed = {};
+        let yaw = 0;
+        let pitch = 0;
+        let snapCooldown = 0;
+
+        window.addEventListener('keydown', (e) => {
+            keysPressed[e.code] = true;
+            if (!gameState.active || gameState.ended) return;
+
+            if (e.code === 'KeyF') {
+                toggleFlashlight();
+            } else if (e.code === 'Tab') {
+                e.preventDefault();
+                toggleCCTV();
+            } else if (e.code === 'KeyE') {
+                tryInteract();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keysPressed[e.code] = false;
+        });
+
+        canvas.addEventListener('click', () => {
+            if (gameState.active && !gameState.ended && !renderer.xr.isPresenting) {
+                if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
+                    try {
+                        canvas.requestPointerLock();
+                    } catch (_) {}
+                }
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!gameState.active || gameState.ended || renderer.xr.isPresenting) return;
+            if (document.pointerLockElement === canvas) {
+                yaw -= e.movementX * 0.0022;
+                pitch -= e.movementY * 0.0022;
+                pitch = Math.max(-1.35, Math.min(1.35, pitch));
+            }
+        });
+
+        function showToast(msg) {
+            const el = document.getElementById('toast-msg');
+            el.textContent = msg;
+            el.style.opacity = '1';
+            clearTimeout(el._hideTimer);
+            el._hideTimer = setTimeout(() => {
+                el.style.opacity = '0';
+            }, 3500);
+        }
+
+        function toggleFlashlight() {
+            if (!gameState.active || gameState.ended) return;
+            if (gameState.battery <= 0) {
+                gameState.flashlightOn = false;
+                flashlight.visible = false;
+                vrBeamMesh.visible = false;
+                showToast('Батарея фонарика разряжена.');
+                return;
+            }
+            gameState.flashlightOn = !gameState.flashlightOn;
+            flashlight.visible = gameState.flashlightOn;
+            vrBeamMesh.visible = gameState.flashlightOn && renderer.xr.isPresenting;
+            audio.playClick(gameState.flashlightOn ? 740 : 420);
+        }
+
+        function toggleCCTV() {
+            if (!gameState.active || gameState.ended) return;
+            gameState.cctvOpen = !gameState.cctvOpen;
+            document.getElementById('cctv-tablet').style.display = gameState.cctvOpen ? 'block' : 'none';
+            audio.playClick(560);
+        }
+
+        function collectKeycard(card) {
+            if (card.collected) return;
+            card.collected = true;
+            card.mesh.visible = false;
+            card.light.visible = false;
+            gameState.keysCollected++;
+            audio.playKeycardPickup();
+
+            document.getElementById('hud-keys').textContent = gameState.keysCollected + ' / 4';
+            showToast('Подобрана: ' + card.name + ' (' + gameState.keysCollected + '/4)');
+
+            if (gameState.keysCollected >= 4) {
+                gameState.exitUnlocked = true;
+                document.getElementById('hud-exit-note').style.display = 'block';
+                showToast('Все 4 ключа собраны! Северный шлюз открыт — бегите на север!');
+                if (exitDoorMesh) {
+                    exitDoorMesh.position.y = 5.5;
+                }
+            }
+        }
+
+        function tryInteract() {
+            if (!gameState.active || gameState.ended) return;
+            const pWorld = new THREE.Vector3();
+            camera.getWorldPosition(pWorld);
+
+            for (let i = 0; i < keycards.length; i++) {
+                const card = keycards[i];
+                if (!card.collected) {
+                    const dist = Math.hypot(pWorld.x - card.mesh.position.x, pWorld.z - card.mesh.position.z);
+                    if (dist < 2.9) {
+                        collectKeycard(card);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Привязка фонарика к правому контроллеру в VR
+        function attachGearToVRControllers() {
             camera.remove(flashlight);
             camera.remove(flashlightTarget);
+            flashlight.position.set(0, 0, 0);
             flashlightTarget.position.set(0, 0, -5);
             vrControllerRight.add(flashlight);
             vrControllerRight.add(flashlightTarget);
             flashlight.target = flashlightTarget;
 
-            startGameplay(true);
-        } catch (err) {
-            showToast('Не удалось запустить VR-сессию: ' + err.message);
+            vrFlashlightModel.visible = true;
+            vrBeamMesh.visible = gameState.flashlightOn;
+            wristTablet.visible = true;
         }
-    });
 
-    document.getElementById('btn-start-pc').addEventListener('click', () => {
-        sound.init();
-        startGameplay(false);
-        canvas.requestPointerLock();
-    });
+        function attachGearToCamera() {
+            vrControllerRight.remove(flashlight);
+            vrControllerRight.remove(flashlightTarget);
+            flashlight.position.set(0, 0, 0);
+            flashlightTarget.position.set(0, 0, -5);
+            camera.add(flashlight);
+            camera.add(flashlightTarget);
+            flashlight.target = flashlightTarget;
 
-    document.getElementById('btn-restart').addEventListener('click', () => {
-        location.reload();
-    });
-
-    function startGameplay(isVR) {
-        document.getElementById('start-screen').classList.add('hidden');
-        if (!isVR) {
-            document.getElementById('hud').classList.remove('hidden');
+            vrFlashlightModel.visible = false;
+            vrBeamMesh.visible = false;
+            wristTablet.visible = false;
         }
-        gameState.active = true;
-        showToast('Смена началась. Найдите 5 аварийных ключ-карт.');
-    }
 
-    function triggerGameOver(isVictory, message) {
-        gameState.active = false;
-        if (document.pointerLockElement) {
-            document.exitPointerLock();
-        }
-        document.getElementById('hud').classList.add('hidden');
-        const endScreen = document.getElementById('end-screen');
-        const badge = document.getElementById('end-badge');
-        const title = document.getElementById('end-title');
-        const desc = document.getElementById('end-desc');
+        vrControllerRight.addEventListener('selectstart', () => toggleFlashlight());
+        vrControllerRight.addEventListener('squeezestart', () => tryInteract());
+        vrControllerLeft.addEventListener('selectstart', () => tryInteract());
 
-        endScreen.classList.remove('hidden');
-        if (isVictory) {
-            badge.textContent = 'СМЕНА ЗАВЕРШЕНА // ЭВАКУАЦИЯ';
-            badge.className = 'inline-block px-3 py-1 rounded text-xs tracking-widest mb-3 bg-emerald-950 text-emerald-400 border border-emerald-700';
-            title.textContent = 'ВЫ ВЫБРАЛИСЬ ИЗ КОМПЛЕКСА';
-            desc.textContent = message;
+        // Проверка доступности WebXR на устройстве
+        const vrSupportLabel = document.getElementById('vr-support-label');
+        let isWebXRSupported = false;
+
+        if (navigator.xr && typeof navigator.xr.isSessionSupported === 'function') {
+            navigator.xr.isSessionSupported('immersive-vr')
+                .then((supported) => {
+                    isWebXRSupported = supported;
+                    vrSupportLabel.textContent = supported
+                        ? 'WebXR: Meta Quest 2 готов'
+                        : 'WebXR: шлем не подключён';
+                    vrSupportLabel.style.color = supported ? '#8bc295' : '#9ca39c';
+                })
+                .catch(() => {
+                    vrSupportLabel.textContent = 'WebXR: откройте файл напрямую';
+                });
         } else {
-            sound.playAlertScreech();
-            badge.textContent = 'СВЯЗЬ С ОХРАННИКОМ ПРЕРВАНА';
-            badge.className = 'inline-block px-3 py-1 rounded text-xs tracking-widest mb-3 bg-red-950 text-red-400 border border-red-800';
-            title.textContent = 'ВЫ ПОЙМАНЫ';
-            desc.textContent = message;
+            vrSupportLabel.textContent = 'WebXR: браузер без VR';
         }
-    }
 
-    function handleXRControllers(dt) {
-        const session = renderer.xr.getSession();
-        if (!session) return;
+        function enterGame(vrMode) {
+            const startScreen = document.getElementById('start-screen');
+            startScreen.style.display = 'none';
+            gameState.active = true;
 
-        if (snapTurnCooldown > 0) snapTurnCooldown -= dt;
+            if (!vrMode) {
+                document.getElementById('hud').style.display = 'flex';
+                document.getElementById('crosshair').style.display = 'block';
+            }
+            showToast('Ночная смена началась. Найдите 4 ключ-карты доступа.');
+        }
 
-        for (const source of session.inputSources) {
-            if (!source.gamepad) continue;
-            const axes = source.gamepad.axes;
-            // Quest Touch стики: axes[2] = X, axes[3] = Y
-            const stickX = axes.length >= 4 ? axes[2] : (axes[0] || 0);
-            const stickY = axes.length >= 4 ? axes[3] : (axes[1] || 0);
+        // Кнопка 1: ЗАПУСТИТЬ В VR (META QUEST 2)
+        document.getElementById('btn-start-vr').addEventListener('click', async () => {
+            audio.init();
+            // Сразу скрываем стартовый экран и запускаем игровой цикл
+            enterGame(false);
 
-            if (source.handedness === 'left') {
-                // Плавное перемещение в направлении взгляда гарнитуры
-                if (Math.abs(stickX) > 0.15 || Math.abs(stickY) > 0.15) {
-                    const forward = new THREE.Vector3();
-                    camera.getWorldDirection(forward);
-                    forward.y = 0;
-                    forward.normalize();
+            if (!navigator.xr || !isWebXRSupported) {
+                try {
+                    if (document.documentElement.requestFullscreen) {
+                        await document.documentElement.requestFullscreen();
+                    }
+                } catch (_) {}
+                showToast('VR-гарнитура не обнаружена. Запущен полноэкранный режим на экране.');
+                return;
+            }
 
-                    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-                    const moveVec = new THREE.Vector3()
-                        .addScaledVector(forward, -stickY)
-                        .addScaledVector(right, stickX);
+            try {
+                const session = await navigator.xr.requestSession('immersive-vr', {
+                    optionalFeatures: ['local-floor', 'bounded-floor']
+                });
 
-                    const speed = 3.8 * dt;
-                    const nx = playerRig.position.x + moveVec.x * speed;
-                    const nz = playerRig.position.z + moveVec.z * speed;
+                session.addEventListener('end', () => {
+                    attachGearToCamera();
+                    if (gameState.active && !gameState.ended) {
+                        document.getElementById('hud').style.display = 'flex';
+                        document.getElementById('crosshair').style.display = 'block';
+                    }
+                });
 
-                    if (isWalkable(nx, playerRig.position.z)) playerRig.position.x = nx;
-                    if (isWalkable(playerRig.position.x, nz)) playerRig.position.z = nz;
-                    sound.playFootstep(false, false);
+                await renderer.xr.setSession(session);
+                document.getElementById('hud').style.display = 'none';
+                document.getElementById('crosshair').style.display = 'none';
+                attachGearToVRControllers();
+            } catch (err) {
+                showToast('Не удалось открыть VR-сессию. Проверьте, что файл открыт в Quest Browser.');
+            }
+        });
+
+        // Кнопка 2: ИГРАТЬ НА ПК
+        document.getElementById('btn-start-pc').addEventListener('click', () => {
+            audio.init();
+            enterGame(false);
+            if (canvas.requestPointerLock) {
+                try {
+                    canvas.requestPointerLock();
+                } catch (_) {}
+            }
+        });
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            location.reload();
+        });
+
+        // =====================================================================
+        // 10. ОБНОВЛЕНИЕ ДВИЖЕНИЯ ИГРОКА (ПК И META QUEST 2)
+        // =====================================================================
+        function updatePlayerPC(dt) {
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+
+            let moveForward = 0;
+            let moveRight = 0;
+            if (keysPressed['KeyW'] || keysPressed['ArrowUp']) moveForward += 1;
+            if (keysPressed['KeyS'] || keysPressed['ArrowDown']) moveForward -= 1;
+            if (keysPressed['KeyD'] || keysPressed['ArrowRight']) moveRight += 1;
+            if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) moveRight -= 1;
+
+            const isMoving = moveForward !== 0 || moveRight !== 0;
+            const wantsSprint = (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) && isMoving;
+
+            if (wantsSprint && gameState.stamina > 4) {
+                gameState.isSprinting = true;
+                gameState.stamina = Math.max(0, gameState.stamina - 24 * dt);
+            } else {
+                gameState.isSprinting = false;
+                gameState.stamina = Math.min(100, gameState.stamina + 15 * dt);
+            }
+
+            if (isMoving) {
+                const forwardVec = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+                const rightVec = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+                const dir = new THREE.Vector3()
+                    .addScaledVector(forwardVec, moveForward)
+                    .addScaledVector(rightVec, moveRight)
+                    .normalize();
+
+                const speed = (gameState.isSprinting ? 6.0 : 3.8) * dt;
+                const nx = playerRig.position.x + dir.x * speed;
+                const nz = playerRig.position.z + dir.z * speed;
+
+                if (isWalkable(nx, playerRig.position.z, 0.52)) playerRig.position.x = nx;
+                if (isWalkable(playerRig.position.x, nz, 0.52)) playerRig.position.z = nz;
+                audio.playFootstep(gameState.isSprinting, false);
+            }
+        }
+
+        function updatePlayerVR(dt) {
+            const session = renderer.xr.getSession();
+            if (!session) return;
+
+            snapCooldown = Math.max(0, snapCooldown - dt);
+
+            for (const source of session.inputSources) {
+                if (!source.gamepad) continue;
+                const axes = source.gamepad.axes;
+                const stickX = axes.length >= 4 ? axes[2] : (axes[0] || 0);
+                const stickY = axes.length >= 4 ? axes[3] : (axes[1] || 0);
+
+                if (source.handedness === 'left') {
+                    const triggerDown = source.gamepad.buttons[0] && source.gamepad.buttons[0].pressed;
+                    const stickDown = source.gamepad.buttons[3] && source.gamepad.buttons[3].pressed;
+                    const moving = Math.abs(stickX) > 0.16 || Math.abs(stickY) > 0.16;
+
+                    if (moving && (triggerDown || stickDown) && gameState.stamina > 4) {
+                        gameState.isSprinting = true;
+                        gameState.stamina = Math.max(0, gameState.stamina - 24 * dt);
+                    } else {
+                        gameState.isSprinting = false;
+                        gameState.stamina = Math.min(100, gameState.stamina + 15 * dt);
+                    }
+
+                    if (moving) {
+                        const forward = new THREE.Vector3();
+                        camera.getWorldDirection(forward);
+                        forward.y = 0;
+                        forward.normalize();
+
+                        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+                        const moveDir = new THREE.Vector3()
+                            .addScaledVector(forward, -stickY)
+                            .addScaledVector(right, stickX);
+
+                        const speed = (gameState.isSprinting ? 5.8 : 3.7) * dt;
+                        const nx = playerRig.position.x + moveDir.x * speed;
+                        const nz = playerRig.position.z + moveDir.z * speed;
+
+                        if (isWalkable(nx, playerRig.position.z, 0.52)) playerRig.position.x = nx;
+                        if (isWalkable(playerRig.position.x, nz, 0.52)) playerRig.position.z = nz;
+                        audio.playFootstep(gameState.isSprinting, false);
+                    }
+                } else if (source.handedness === 'right') {
+                    // Дискретный поворот (Snap Turn) на 35 градусов
+                    if (snapCooldown <= 0 && Math.abs(stickX) > 0.65) {
+                        playerRig.rotation.y -= Math.sign(stickX) * (35 * Math.PI / 180);
+                        snapCooldown = 0.28;
+                    }
                 }
-            } else if (source.handedness === 'right') {
-                // Дискретный поворот (Snap Turn) на 35 градусов для комфорта в VR
-                if (snapTurnCooldown <= 0 && Math.abs(stickX) > 0.65) {
-                    playerRig.rotation.y -= Math.sign(stickX) * (Math.PI / 5);
-                    snapTurnCooldown = 0.28;
+            }
+        }
+
+        // =====================================================================
+        // 11. ОБНОВЛЕНИЕ ИИ АНИМАТРОНИКОВ (ДОГОНЯЛКИ И СОВМЕСТНАЯ ОХОТА)
+        // =====================================================================
+        function updateAnimatronics(dt, elapsed) {
+            if (!gameState.active || gameState.ended) return;
+
+            const playerPos = new THREE.Vector3();
+            camera.getWorldPosition(playerPos);
+
+            // Смена водящего в догонялках между аниматрониками каждые 14 секунд
+            tagSwitchTimer -= dt;
+            if (tagSwitchTimer <= 0) {
+                tagLeaderIndex = (tagLeaderIndex + 1) % animatronics.length;
+                tagSwitchTimer = 14;
+            }
+
+            const wasHunting = globalHuntTimer > 0;
+            if (globalHuntTimer > 0) {
+                globalHuntTimer = Math.max(0, globalHuntTimer - dt);
+            }
+
+            let spottedNow = false;
+
+            for (let i = 0; i < animatronics.length; i++) {
+                const ai = animatronics[i];
+                const ax = ai.mesh.position.x;
+                const az = ai.mesh.position.z;
+
+                const distToPlayer = Math.hypot(playerPos.x - ax, playerPos.z - az);
+
+                // Проверка на поимку игрока
+                if (distToPlayer < 1.15) {
+                    finishGame(false, ai.name + ' настиг вас в темноте комплекса.');
+                    return;
                 }
-                // Кнопка A/B для подбора ключ-карт в VR
-                if (source.gamepad.buttons.some((b, idx) => idx >= 3 && b.pressed)) {
-                    tryInteract();
+
+                // Обнаружение игрока по прямой видимости или звуку бега
+                const sightRange = gameState.flashlightOn ? 18.0 : 10.5;
+                const canSee = distToPlayer < sightRange && hasLineOfSight(ax, az, playerPos.x, playerPos.z);
+                const canHearSprint = gameState.isSprinting && distToPlayer < 13.5;
+
+                if (canSee || canHearSprint) {
+                    spottedNow = true;
+                }
+            }
+
+            if (spottedNow) {
+                if (!wasHunting) {
+                    audio.playHuntAlarm();
+                    showToast('ТРЕВОГА! Вас заметили — все трое начали совместную охоту!');
+                }
+                globalHuntTimer = 11.0;
+            }
+
+            const isHunting = globalHuntTimer > 0;
+            document.getElementById('hud-hunt-banner').style.display = isHunting ? 'block' : 'none';
+
+            for (let i = 0; i < animatronics.length; i++) {
+                const ai = animatronics[i];
+                const ax = ai.mesh.position.x;
+                const az = ai.mesh.position.z;
+
+                if (isHunting) {
+                    // Совместная охота всех троих на игрока
+                    ai.targetX = playerPos.x;
+                    ai.targetZ = playerPos.z;
+                } else {
+                    // Спокойный режим: аниматроники играют в догонялки друг за другом
+                    ai.retargetTimer -= dt;
+                    if (i === tagLeaderIndex) {
+                        // Водящий убегает по залам и коридорам
+                        if (ai.retargetTimer <= 0 || Math.hypot(ai.targetX - ax, ai.targetZ - az) < 1.6) {
+                            const nextPt = pickRandomWalkableTarget();
+                            ai.targetX = nextPt.x;
+                            ai.targetZ = nextPt.z;
+                            ai.retargetTimer = 5.5;
+                        }
+                    } else {
+                        // Остальные двое бегут за водящим (играют в догонялки)
+                        const leader = animatronics[tagLeaderIndex];
+                        ai.targetX = leader.mesh.position.x;
+                        ai.targetZ = leader.mesh.position.z;
+                    }
+                }
+
+                const dx = ai.targetX - ax;
+                const dz = ai.targetZ - az;
+                const dist = Math.hypot(dx, dz);
+
+                if (dist > 0.25) {
+                    const spd = (isHunting ? ai.huntSpeed : ai.patrolSpeed) * dt;
+                    const dirX = dx / dist;
+                    const dirZ = dz / dist;
+
+                    let moved = false;
+                    if (isWalkable(ax + dirX * spd, az, 0.5)) {
+                        ai.mesh.position.x += dirX * spd;
+                        moved = true;
+                    }
+                    if (isWalkable(ai.mesh.position.x, az + dirZ * spd, 0.5)) {
+                        ai.mesh.position.z += dirZ * spd;
+                        moved = true;
+                    }
+
+                    // Если упёрся в угол при догонялках — выбираем новую точку обхода
+                    if (!moved && !isHunting) {
+                        const alt = pickRandomWalkableTarget();
+                        ai.targetX = alt.x;
+                        ai.targetZ = alt.z;
+                    }
+
+                    // Плавный поворот корпуса в сторону движения
+                    const targetYaw = Math.atan2(dirX, dirZ);
+                    ai.mesh.rotation.y = targetYaw;
+
+                    // Покачивание при шаге
+                    ai.mesh.position.y = Math.abs(Math.sin(elapsed * (isHunting ? 13 : 8) + i)) * 0.08;
                 }
             }
         }
-    }
 
-    // =========================================================================
-    // 11. ОТРИСОВКА МИНИ-КАРТЫ ПЛАНШЕТА ОХРАНЫ
-    // =========================================================================
-    const minimapCanvas = document.getElementById('minimap-canvas');
-    const minimapCtx = minimapCanvas.getContext('2d');
+        // =====================================================================
+        // 12. ОБНОВЛЕНИЕ СИСТЕМ ИГРЫ, РАДАРА И РЕНДЕРА
+        // =====================================================================
+        const minimapCanvas = document.getElementById('minimap-canvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
 
-    function renderCCTVMinimap() {
-        if (!gameState.cctvOpen) return;
-        const w = minimapCanvas.width;
-        const h = minimapCanvas.height;
-        minimapCtx.fillStyle = '#050806';
-        minimapCtx.fillRect(0, 0, w, h);
+        function drawRadar(ctx, w, h) {
+            ctx.fillStyle = '#070908';
+            ctx.fillRect(0, 0, w, h);
 
-        const cw = w / MAP_W;
-        const ch = h / MAP_H;
+            const cw = w / MAP_W;
+            const ch = h / MAP_H;
 
-        for (let gz = 0; gz < MAP_H; gz++) {
-            for (let gx = 0; gx < MAP_W; gx++) {
-                const c = worldGrid[gz][gx];
-                if (c === 1) continue;
-                minimapCtx.fillStyle = c === 2 ? '#1e3a29' : (c === 5 ? '#7f1d1d' : '#1c221e');
-                minimapCtx.fillRect(gx * cw, gz * ch, cw - 0.5, ch - 0.5);
+            for (let gz = 0; gz < MAP_H; gz++) {
+                for (let gx = 0; gx < MAP_W; gx++) {
+                    const c = worldGrid[gz][gx];
+                    if (c === 1) continue;
+                    ctx.fillStyle = c === 2 ? '#233628' : (c === 5 ? '#6e2621' : '#1b201c');
+                    ctx.fillRect(gx * cw, gz * ch, cw - 0.5, ch - 0.5);
+                }
+            }
+
+            // Ключ-карты (жёлтые квадраты)
+            for (let i = 0; i < keycards.length; i++) {
+                const card = keycards[i];
+                if (card.collected) continue;
+                const g = worldToGrid(card.mesh.position.x, card.mesh.position.z);
+                ctx.fillStyle = '#d9b86c';
+                ctx.fillRect(g.gx * cw, g.gz * ch, cw, ch);
+            }
+
+            // Аниматроники (красные точки)
+            for (let i = 0; i < animatronics.length; i++) {
+                const ai = animatronics[i];
+                const g = worldToGrid(ai.mesh.position.x, ai.mesh.position.z);
+                ctx.fillStyle = '#c95b4b';
+                ctx.beginPath();
+                ctx.arc((g.gx + 0.5) * cw, (g.gz + 0.5) * ch, 3.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Позиция игрока (светло-зелёная точка)
+            const pPos = new THREE.Vector3();
+            camera.getWorldPosition(pPos);
+            const pg = worldToGrid(pPos.x, pPos.z);
+            ctx.fillStyle = '#8bc295';
+            ctx.beginPath();
+            ctx.arc((pg.gx + 0.5) * cw, (pg.gz + 0.5) * ch, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updateSystems(dt, elapsed) {
+            // Вращение вентилятора в посту охраны и парение ключ-карт
+            for (let i = 0; i < animatedProps.length; i++) {
+                animatedProps[i].mesh.rotation.z += animatedProps[i].rotZ * dt;
+            }
+            for (let i = 0; i < keycards.length; i++) {
+                if (!keycards[i].collected) {
+                    keycards[i].mesh.rotation.y = elapsed * 1.8;
+                    keycards[i].mesh.position.y = 1.12 + Math.sin(elapsed * 3.0 + i) * 0.08;
+                }
+            }
+
+            if (!gameState.active || gameState.ended) return;
+
+            // Игровое время смены (1 реальная секунда = 1 игровое очко времени; 360 сек = 06:00 AM)
+            gameState.shiftMinutes += dt * 1.15;
+            const totalMins = Math.floor(gameState.shiftMinutes);
+            const hrs = Math.floor(totalMins / 60);
+            const mins = totalMins % 60;
+            const timeStr = String(hrs).padStart(2, '0') + ':' + String(mins).padStart(2, '0') + ' AM';
+            document.getElementById('hud-time').textContent = timeStr;
+
+            // Разряд батареи фонарика
+            if (gameState.flashlightOn) {
+                gameState.battery = Math.max(0, gameState.battery - 0.55 * dt);
+                if (gameState.battery <= 0) {
+                    gameState.flashlightOn = false;
+                    flashlight.visible = false;
+                    vrBeamMesh.visible = false;
+                    showToast('Заряд фонаря исчерпан!');
+                }
+            }
+
+            document.getElementById('bar-battery').style.width = gameState.battery + '%';
+            document.getElementById('bar-stamina').style.width = gameState.stamina + '%';
+
+            // Определение текущего сектора комплекса
+            const pPos = new THREE.Vector3();
+            camera.getWorldPosition(pPos);
+            const pg = worldToGrid(pPos.x, pPos.z);
+
+            let zoneName = 'КОРИДОРЫ КОМПЛЕКСА';
+            if (pg.gz >= 25 && pg.gx >= 13 && pg.gx <= 17) zoneName = 'ПОСТ ОХРАНЫ';
+            else if (pg.gz <= 2 && pg.gx >= 13 && pg.gx <= 17) zoneName = 'СЕВЕРНЫЙ ШЛЮЗ ВЫХОДА';
+            else if (pg.gx <= 7) zoneName = 'ЗАПАДНЫЕ КОРИДОРЫ СО ШКАФЧИКАМИ';
+            else if (pg.gx >= 23) zoneName = 'ВОСТОЧНЫЙ АТРИУМ';
+            else if (pg.gz >= 7 && pg.gz <= 19) zoneName = 'ГЛАВНЫЙ ЗАЛ ПИЦЦЕРИИ';
+            document.getElementById('hud-zone').textContent = zoneName;
+
+            // Подсказка и автоподбор ключ-карт в VR
+            let nearCard = null;
+            for (let i = 0; i < keycards.length; i++) {
+                const card = keycards[i];
+                if (!card.collected) {
+                    const dist = Math.hypot(pPos.x - card.mesh.position.x, pPos.z - card.mesh.position.z);
+                    if (renderer.xr.isPresenting && dist < 2.0) {
+                        collectKeycard(card);
+                    } else if (dist < 2.9) {
+                        nearCard = card;
+                        break;
+                    }
+                }
+            }
+
+            const promptEl = document.getElementById('interact-prompt');
+            if (nearCard && !renderer.xr.isPresenting) {
+                promptEl.textContent = '[E] Взять: ' + nearCard.name;
+                promptEl.style.display = 'block';
+            } else {
+                promptEl.style.display = 'none';
+            }
+
+            // Проверка победы
+            if (hrs >= 6) {
+                finishGame(true, 'Наступило 06:00 утра! Смена окончена, шлюзы разблокированы.');
+            } else if (gameState.exitUnlocked && pg.gz <= 1 && pg.gx >= 13 && pg.gx <= 17) {
+                finishGame(true, 'Вы открыли Северный шлюз 4 ключ-картами и выбрались из Сектора-0!');
             }
         }
 
-        // Ключ-карты на радаре
-        keycards.forEach((card) => {
-            if (card.collected) return;
-            const { gx, gz } = worldToGrid(card.mesh.position.x, card.mesh.position.z);
-            minimapCtx.fillStyle = '#fbbf24';
-            minimapCtx.fillRect(gx * cw, gz * ch, cw, ch);
+        function finishGame(victory, reason) {
+            if (gameState.ended) return;
+            gameState.ended = true;
+            gameState.active = false;
+
+            if (renderer.xr.isPresenting && renderer.xr.getSession()) {
+                renderer.xr.getSession().end().catch(() => {});
+            }
+            if (document.pointerLockElement && document.exitPointerLock) {
+                try {
+                    document.exitPointerLock();
+                } catch (_) {}
+            }
+
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('crosshair').style.display = 'none';
+            document.getElementById('interact-prompt').style.display = 'none';
+            document.getElementById('cctv-tablet').style.display = 'none';
+
+            const titleEl = document.getElementById('end-title');
+            titleEl.textContent = victory ? 'СМЕНА ЗАВЕРШЕНА' : 'ВЫ ПОЙМАНЫ';
+            titleEl.style.color = victory ? '#8bc295' : '#c95b4b';
+            document.getElementById('end-reason').textContent = reason;
+            document.getElementById('end-screen').style.display = 'flex';
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Аниматроники на радаре
-        animatronics.forEach((ai) => {
-            const { gx, gz } = worldToGrid(ai.mesh.position.x, ai.mesh.position.z);
-            minimapCtx.fillStyle = '#ef4444';
-            minimapCtx.beginPath();
-            minimapCtx.arc((gx + 0.5) * cw, (gz + 0.5) * ch, 3.2, 0, Math.PI * 2);
-            minimapCtx.fill();
-        });
+        const clock = new THREE.Clock();
 
-        // Позиция игрока
-        const pWorld = new THREE.Vector3();
-        camera.getWorldPosition(pWorld);
-        const pg = worldToGrid(pWorld.x, pWorld.z);
-        minimapCtx.fillStyle = '#34d399';
-        minimapCtx.beginPath();
-        minimapCtx.arc((pg.gx + 0.5) * cw, (pg.gz + 0.5) * ch, 3.5, 0, Math.PI * 2);
-        minimapCtx.fill();
-    }
-
-    // =========================================================================
-    // 12. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ (60-90 FPS ДЛЯ ПК И META QUEST 2)
-    // =========================================================================
-    const clock = new THREE.Clock();
-
-    function updatePlayerPC(dt) {
-        if (renderer.xr.isPresenting) return;
-
-        camera.rotation.order = 'YXZ';
-        camera.rotation.y = cameraYaw;
-        camera.rotation.x = cameraPitch;
-
-        const forward = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
-        const right = new THREE.Vector3(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
-        const move = new THREE.Vector3();
-
-        if (keysPressed['KeyW'] || keysPressed['ArrowUp']) move.add(forward);
-        if (keysPressed['KeyS'] || keysPressed['ArrowDown']) move.sub(forward);
-        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) move.add(right);
-        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) move.sub(right);
-
-        const wantsSprint = (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) && move.lengthSq() > 0;
-        if (wantsSprint && gameState.stamina > 5) {
-            gameState.isSprinting = true;
-            gameState.stamina = Math.max(0, gameState.stamina - 24 * dt);
-        } else {
-            gameState.isSprinting = false;
-            gameState.stamina = Math.min(100, gameState.stamina + 14 * dt);
-        }
-
-        if (move.lengthSq() > 0) {
-            move.normalize();
-            const speed = (gameState.isSprinting ? 6.1 : 3.6) * dt;
-            const nx = playerRig.position.x + move.x * speed;
-            const nz = playerRig.position.z + move.z * speed;
-
-            if (isWalkable(nx, playerRig.position.z)) playerRig.position.x = nx;
-            if (isWalkable(playerRig.position.x, nz)) playerRig.position.z = nz;
-
-            sound.playFootstep(gameState.isSprinting, false);
-        }
-    }
-
-    function updateGameSystems(dt, elapsed) {
-        // Вращение лопастей вентилятора в комнате охраны
-        if (deskFanBlades) {
-            deskFanBlades.rotation.z += dt * 11;
-        }
-
-        // Мерцание неисправных потолочных ламп
-        flickeringLights.forEach((light, i) => {
-            if (Math.random() < 0.08) {
-                light.intensity = Math.random() > 0.35 ? 0.75 : 0.08;
-            }
-        });
-
-        // Вращение несобранных ключ-карт
-        keycards.forEach((card, i) => {
-            if (!card.collected) {
-                card.mesh.rotation.y = elapsed * 2 + i;
-                card.mesh.position.y = 1.05 + Math.sin(elapsed * 3 + i) * 0.06;
-            }
-        });
-
-        if (!gameState.active) return;
-
-        // Время смены (игровые часы с 00:00 до 06:00)
-        gameState.shiftSeconds += dt;
-        const simMinutes = Math.floor(gameState.shiftSeconds * 1.5);
-        const hrs = Math.floor(simMinutes / 60) % 6;
-        const mins = simMinutes % 60;
-        document.getElementById('hud-clock').textContent =
-            `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')} AM`;
-
-        // Расход батареи фонарика
-        if (gameState.flashlightOn) {
-            gameState.battery = Math.max(0, gameState.battery - 1.15 * dt);
-            if (gameState.battery <= 0) {
-                gameState.flashlightOn = false;
-                flashlight.visible = false;
-                showToast('Фонарь разрядился!');
-            }
-        } else {
-            // Медленная регенерация конденсатора фонаря в выключенном состоянии
-            gameState.battery = Math.min(100, gameState.battery + 0.45 * dt);
-        }
-
-        // Обновление UI полосок
-        document.getElementById('battery-text').textContent = `${Math.ceil(gameState.battery)}%`;
-        document.getElementById('battery-bar').style.width = `${gameState.battery}%`;
-        document.getElementById('stamina-text').textContent = `${Math.ceil(gameState.stamina)}%`;
-        document.getElementById('stamina-bar').style.width = `${gameState.stamina}%`;
-
-        // Определение текущего сектора и ближайших интерактивных объектов
-        const pPos = new THREE.Vector3();
-        camera.getWorldPosition(pPos);
-        const pg = worldToGrid(pPos.x, pPos.z);
-
-        for (const zone of roomZones) {
-            if (pg.gx >= zone.x1 && pg.gx <= zone.x2 && pg.gz >= zone.y1 && pg.gz <= zone.y2) {
-                document.getElementById('hud-location').textContent = zone.name;
-                break;
-            }
-        }
-
-        // Подсказка подбора ключ-карты
-        let nearCard = null;
-        for (const card of keycards) {
-            if (!card.collected && Math.hypot(pPos.x - card.mesh.position.x, pPos.z - card.mesh.position.z) < 2.6) {
-                nearCard = card;
-                break;
-            }
-        }
-
-        const promptEl = document.getElementById('interact-prompt');
-        if (nearCard) {
-            promptEl.textContent = `[E] Взять: ${nearCard.label}`;
-            promptEl.classList.remove('hidden');
-        } else {
-            promptEl.classList.add('hidden');
-        }
-
-        // Проверка победы: игрок дошёл до открытого Северного Выходного Шлюза
-        if (gameState.exitUnlocked && pg.gz <= 1 && pg.gx >= 12 && pg.gx <= 16) {
-            triggerGameOver(true, 'Вы активировали аварийный шлюз и покинули искажённый комплекс!');
-        }
-    }
-
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    window.onload = function () {
+        // Единый цикл рендеринга для ПК и Meta Quest 2 WebXR
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.05);
             const elapsed = clock.getElapsedTime();
 
             if (renderer.xr.isPresenting) {
-                handleXRControllers(dt);
-            } else if (gameState.active) {
+                updatePlayerVR(dt);
+            } else if (gameState.active && !gameState.ended) {
                 updatePlayerPC(dt);
             }
 
-            updateGameSystems(dt, elapsed);
+            updateSystems(dt, elapsed);
             updateAnimatronics(dt, elapsed);
-            renderCCTVMinimap();
+
+            if (gameState.cctvOpen) {
+                drawRadar(minimapCtx, minimapCanvas.width, minimapCanvas.height);
+            }
+
+            if (renderer.xr.isPresenting && wristTablet.visible) {
+                drawRadar(wristCtx, 256, 212);
+                wristCtx.fillStyle = globalHuntTimer > 0 ? '#5c1a16' : '#121713';
+                wristCtx.fillRect(0, 212, 256, 44);
+                wristCtx.fillStyle = globalHuntTimer > 0 ? '#f5d0cc' : '#c7d6c9';
+                wristCtx.font = 'bold 15px monospace';
+                const status = globalHuntTimer > 0 ? 'ТРЕВОГА!' : 'КЛЮЧИ: ' + gameState.keysCollected + '/4';
+                wristCtx.fillText(status + '  БАТ:' + Math.ceil(gameState.battery) + '%', 10, 239);
+                wristTex.needsUpdate = true;
+            }
 
             renderer.render(scene, camera);
         });
-    };
+    })();
     </script>
 </body>
 </html>
